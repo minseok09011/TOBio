@@ -1,0 +1,435 @@
+/* ============================================================
+   우리밭 미생물 도우미 — 공통 디자인
+   테마: 자연·흙·잎 (농업 친화) / "농촌 정보지 + 따뜻한 앱"
+   모든 페이지가 이 파일을 공유합니다.
+   ============================================================ */
+
+/* --- 디자인 토큰 (색·둥근모서리·그림자) --- */
+:root {
+    /* 컬러 팔레트 */
+    --color-primary:   #4A7C2A;   /* 진한 잎 초록 (주색) */
+    --color-secondary: #8FBC5C;   /* 연한 잎 초록 (보조색) */
+    --color-bg:        #FAF7F0;   /* 베이지·아이보리 (배경) */
+    --color-accent:    #E8A33D;   /* 수확 호박색 (강조) */
+    --color-text:      #2D3E1F;   /* 어두운 초록·갈색 (텍스트) */
+
+    /* 신호등 (살포 결과 화면용) */
+    --color-go:   #5BA84C;        /* 🟢 가능 */
+    --color-warn: #F4B942;        /* 🟡 주의 */
+    --color-stop: #D64545;        /* ⛔ 금지 */
+
+    /* 보조 톤 */
+    --color-card:      #FFFFFF;
+    --color-text-soft: #5A6B48;   /* 부드러운 본문 */
+    --color-tint-leaf: #EAF1E0;   /* 연한 잎 배경 */
+    --color-tint-warm: #FBEFD8;   /* 연한 호박 배경 */
+    --color-line:      #E3DECF;   /* 연한 경계선 */
+
+    /* 둥근 모서리 */
+    --radius-btn:  16px;
+    --radius-card: 20px;
+
+    /* 부드럽게 떠있는 그림자 */
+    --shadow-soft:  0 4px 14px rgba(45, 62, 31, 0.08);
+    --shadow-float: 0 8px 24px rgba(45, 62, 31, 0.10);
+}
+
+/* --- 기본 리셋 --- */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Pretendard Variable", Pretendard,
+                 -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+    background-color: var(--color-bg);
+    /* 상단에 은은한 잎 초록 빛 — 따뜻한 느낌 (그라데이션 절제) */
+    background-image: radial-gradient(circle at 50% -8%,
+                      rgba(143, 188, 92, 0.20), transparent 55%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: var(--color-text);
+    font-size: 18px;      /* 본문 18px */
+    font-weight: 500;     /* 본문 500 */
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+}
+
+/* --- 레이아웃: 모바일 우선, PC에선 가운데 정렬 --- */
+.container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================================
+   공통 컴포넌트
+   ============================================================ */
+
+/* --- 하위 페이지 상단 (뒤로가기 + 제목) --- */
+.page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0 20px;
+}
+
+.back-link {
+    flex-shrink: 0;
+    display: inline-grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--color-card);
+    box-shadow: var(--shadow-soft);
+    color: var(--color-primary);
+    font-size: 24px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.back-link:active {
+    transform: translateY(1px);
+}
+
+.page-title {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+/* --- 작물·목적 요약 칩 --- */
+.summary {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.summary__chip {
+    background: var(--color-tint-leaf);
+    color: var(--color-primary);
+    font-weight: 600;
+    font-size: 17px;
+    padding: 8px 16px;
+    border-radius: 999px;
+}
+
+/* --- 입력 필드 --- */
+.field {
+    margin-bottom: 22px;
+}
+
+.field__label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.field__hint {
+    display: block;
+    margin-top: -4px;
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--color-text-soft);
+}
+
+.field__input,
+.field__select {
+    width: 100%;
+    padding: 16px 18px;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--color-text);
+    background: var(--color-card);
+    border: 2px solid var(--color-line);
+    border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* select 화살표 (이모지 대신 깔끔하게) */
+.field__select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%234A7C2A' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 18px center;
+    padding-right: 48px;
+}
+
+.field__input:focus,
+.field__select:focus {
+    outline: none;
+    border-color: var(--color-secondary);
+    box-shadow: 0 0 0 4px rgba(143, 188, 92, 0.25);
+}
+
+/* --- 버튼 --- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 18px 24px;
+    font-family: inherit;
+    font-size: 22px;       /* 버튼 22px */
+    font-weight: 600;      /* 버튼 600 */
+    border: 2px solid transparent;
+    border-radius: var(--radius-btn);
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn--primary {
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: var(--shadow-float);
+}
+
+.btn--ghost {
+    background: var(--color-card);
+    color: var(--color-primary);
+    border-color: var(--color-line);
+    box-shadow: var(--shadow-soft);
+}
+
+/* 버튼 묶음 (결과 페이지 하단) */
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+/* ============================================================
+   홈 화면
+   ============================================================ */
+
+.home__header {
+    text-align: center;
+    padding: 36px 0 28px;
+}
+
+.home__title {
+    margin: 0 0 14px;
+    font-size: 32px;       /* 제목 32px */
+    font-weight: 700;      /* 제목 700 */
+    color: var(--color-primary);
+    letter-spacing: -0.5px;
+    line-height: 1.3;
+}
+
+.home__subtitle {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--color-text-soft);
+    line-height: 1.5;
+}
+
+.home__menu {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    flex: 1;
+    justify-content: center;
+}
+
+.menu-card {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+    text-align: left;
+    padding: 24px;
+    background: var(--color-card);
+    border: 2px solid transparent;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-float);
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.menu-card:hover { transform: translateY(-2px); }
+.menu-card:active { transform: translateY(1px); box-shadow: var(--shadow-soft); }
+
+.menu-card:focus-visible {
+    outline: none;
+    border-color: var(--color-secondary);
+    box-shadow: 0 0 0 4px rgba(143, 188, 92, 0.35), var(--shadow-float);
+}
+
+.menu-card__icon {
+    flex-shrink: 0;
+    width: 66px;
+    height: 66px;
+    display: grid;
+    place-items: center;
+    font-size: 34px;
+    border-radius: 18px;
+}
+
+.menu-card--recommend .menu-card__icon { background: var(--color-tint-leaf); }
+.menu-card--spray .menu-card__icon { background: var(--color-tint-warm); }
+
+.menu-card__text { display: flex; flex-direction: column; gap: 6px; }
+.menu-card__title { font-size: 22px; font-weight: 600; color: var(--color-text); }
+.menu-card__desc { font-size: 18px; font-weight: 500; color: var(--color-text-soft); }
+
+.home__footer { text-align: center; padding-top: 28px; }
+.home__footer p { margin: 0; font-size: 16px; color: #8A957A; }
+
+/* ============================================================
+   추천 결과 (a-1) — 미생물 카드
+   ============================================================ */
+
+.result-card {
+    background: var(--color-card);
+    border-radius: var(--radius-card);
+    padding: 24px;
+    box-shadow: var(--shadow-float);
+    margin-bottom: 18px;
+}
+
+.result-card__badge {
+    display: inline-block;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+}
+
+.result-card__name {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.result-card__sci {
+    margin: 0 0 16px;
+    font-size: 16px;
+    color: var(--color-text-soft);
+}
+
+.result-card__effect {
+    margin: 0 0 18px;
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+.result-card__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-top: 1px solid var(--color-line);
+}
+
+.result-card__row .label {
+    font-weight: 600;
+    color: var(--color-text-soft);
+}
+
+.result-card__row .value {
+    font-weight: 700;
+    text-align: right;
+}
+
+.section-title {
+    margin: 26px 0 12px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+/* ============================================================
+   살포 결과 (b-1) — 신호등
+   ============================================================ */
+
+.signal {
+    text-align: center;
+    background: var(--color-card);
+    border-radius: var(--radius-card);
+    padding: 36px 24px;
+    box-shadow: var(--shadow-float);
+    margin-bottom: 18px;
+}
+
+.signal__light {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 60px;
+}
+
+.signal--go    .signal__light { background: rgba(91, 168, 76, 0.18); }
+.signal--warn  .signal__light { background: rgba(244, 185, 66, 0.20); }
+.signal--stop  .signal__light { background: rgba(214, 69, 69, 0.16); }
+
+.signal__headline {
+    margin: 0 0 10px;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.signal--go    .signal__headline { color: var(--color-go); }
+.signal--warn  .signal__headline { color: #C98A14; }
+.signal--stop  .signal__headline { color: var(--color-stop); }
+
+.signal__date {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.signal__sub {
+    margin: 14px 0 0;
+    font-size: 17px;
+    color: var(--color-text-soft);
+    line-height: 1.6;
+}
+
+/* 안내 박스 */
+.notice {
+    background: var(--color-tint-leaf);
+    border-radius: 14px;
+    padding: 16px 18px;
+    font-size: 16px;
+    color: var(--color-text-soft);
+    line-height: 1.6;
+}
+
+/* 아주 작은 폰(가로 360px 이하)에서 살짝 줄이기 */
+@media (max-width: 360px) {
+    .home__title { font-size: 28px; }
+    .menu-card { padding: 20px; gap: 14px; }
+    .menu-card__icon { width: 58px; height: 58px; font-size: 30px; }
+    .signal__light { width: 100px; height: 100px; font-size: 52px; }
+}

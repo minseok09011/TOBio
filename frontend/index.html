@@ -3,120 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>홈 화면 - 미생물 추천 정밀 플랫폼</title>
-    <style>
-        /* 🌿 농가 친화적인 깔끔한 메인 테마 디자인 (CSS) */
-        body {
-            font-family: 'Malgun Gothic', sans-serif;
-            background-color: #f4f6f4;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-top: 50px;
-        }
-        h1 {
-            color: #2E7D32;
-            text-align: center;
-            font-size: 24px;
-            margin-bottom: 25px;
-        }
-        label {
-            font-weight: bold;
-            display: block;
-            margin-top: 15px;
-            margin-bottom: 5px;
-            color: #555;
-        }
-        input, select {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 15px;
-        }
-        input:focus, select:focus {
-            border-color: #4CAF50;
-            outline: none;
-        }
-        .submit-btn {
-            width: 100%;
-            background-color: #4CAF50;
-            color: white;
-            padding: 14px;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-            margin-top: 10px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-        }
-        .submit-btn:hover {
-            background-color: #45a049;
-        }
-    </style>
+    <title>우리밭 미생물 도우미</title>
+
+    <!-- 폰트: Pretendard -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css">
+    <!-- 공통 디자인 -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div class="container">
-    <h1>🌱 AI 미생물 정밀 처방 서비스</h1>
-    
-    <label for="location">농사 지역 (시/군/구) 구체적인 위치 입력해주세요!!</label>
-    <input type="text" id="location" placeholder="예: 전북특별자치도 전주시 덕진구 백제대로 567">
+<main class="container home">
 
-    <label for="crop">작물 종류</label>
-    <select id="crop">
-        <option value="tomato">🍅 토마토</option>
-        <option value="pepper">🌶️ 고추</option>
-        <option value="cucumber">🥒 오이</option>
-    </select>
+    <!-- 상단: 서비스 이름 -->
+    <header class="home__header">
+        <h1 class="home__title">🌱 우리밭 미생물 도우미</h1>
+        <p class="home__subtitle">우리 밭에 딱 맞는 미생물,<br>어렵지 않게 찾아드려요</p>
+    </header>
 
-    <label for="action-need">필요한 조치 (목적)</label>
-    <select id="action-need">
-        <option value="disease">병해관리 (탄저병, 역병 등 방제)</option>
-        <option value="growth">토양개량 및 작물생육 촉진</option>
-    </select>
-    
-    <button class="submit-btn" onclick="saveDataAndGoNext()">미생물 추천 받기 ➔</button>
-</div>
+    <!-- 중앙: 큰 버튼 2개 -->
+    <nav class="home__menu">
 
-<script>
-    // ================================================================
-    // 🧠 홈 화면 백엔드 전송 로직 (민석 님의 무대)
-    // ================================================================
-    function saveDataAndGoNext() {
-        const location = document.getElementById("location").value.trim();
-        const crop = document.getElementById("crop").value;
-        const need = document.getElementById("action-need").value;
+        <button type="button" class="menu-card menu-card--recommend" onclick="goRecommend()">
+            <span class="menu-card__icon">🔍</span>
+            <span class="menu-card__text">
+                <span class="menu-card__title">미생물 추천받기</span>
+                <span class="menu-card__desc">"뭘 써야 할지 몰라요"</span>
+            </span>
+        </button>
 
-        // 유효성 검사 (지역 입력 안 하면 막기)
-        if (!location) {
-            alert("농사 지역을 입력해 주세요!");
-            return;
-        }
+        <button type="button" class="menu-card menu-card--spray" onclick="goSpray()">
+            <span class="menu-card__icon">✅</span>
+            <span class="menu-card__text">
+                <span class="menu-card__title">살포 가능 확인</span>
+                <span class="menu-card__desc">"이거 뿌려도 되나요?"</span>
+            </span>
+        </button>
 
-        // 브라우저 임시 창고(localStorage)에 사용자가 입력한 값 임시 저장
-        localStorage.setItem("userLocation", location);
-        localStorage.setItem("userCrop", crop);
-        localStorage.setItem("userNeed", need);
+    </nav>
 
-        console.log(`[데이터 저장 완료] 지역: ${location}, 작물: ${crop}, 목적: ${need}`);
+    <!-- 하단: 안내 문구 -->
+    <footer class="home__footer">
+        <p>공공 농업데이터 기반 · 가입 없이 바로 사용</p>
+    </footer>
 
-        // 다음 탭인 a 페이지(recommend.html) 파일로 브라우저 이동
-        window.location.href = "recommend.html";
-    }
-</script>
+</main>
+
+<script src="js/app.js"></script>
 
 </body>
 </html>

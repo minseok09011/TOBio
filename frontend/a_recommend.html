@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미생물 추천받기 - 우리밭 미생물 도우미</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<main class="container">
+
+    <header class="page-header">
+        <a href="index.html" class="back-link" aria-label="홈으로">←</a>
+        <h1 class="page-title">🔍 미생물 추천받기</h1>
+    </header>
+
+    <div class="field">
+        <label class="field__label" for="sido">어디에서 농사 지으세요?</label>
+        <span class="field__hint">먼저 시·도를 고르세요</span>
+        <select id="sido" class="field__select">
+            <option value="">시·도를 고르세요</option>
+        </select>
+    </div>
+
+    <div class="field">
+        <label class="field__label" for="sigungu">시·군·구</label>
+        <select id="sigungu" class="field__select" disabled>
+            <option value="">먼저 시·도를 고르세요</option>
+        </select>
+    </div>
+
+    <div class="field">
+        <label class="field__label" for="crop">무슨 작물 키우세요?</label>
+        <select id="crop" class="field__select">
+            <option value="tomato">🍅 토마토</option>
+            <option value="pepper">🌶️ 고추</option>
+            <option value="cucumber">🥒 오이</option>
+        </select>
+    </div>
+
+    <div class="field">
+        <label class="field__label" for="need">무엇이 제일 걱정이세요?</label>
+        <select id="need" class="field__select">
+            <option value="disease">병이 안 생기게 하고 싶어요</option>
+            <option value="growth">작물이 잘 자라게 하고 싶어요</option>
+        </select>
+    </div>
+
+    <button type="button" class="btn btn--primary" onclick="submitRecommend()">
+        미생물 추천 받기 ➔
+    </button>
+
+</main>
+
+<script src="js/regions.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
