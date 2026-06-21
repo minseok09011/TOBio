@@ -4,6 +4,10 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const proj4 = require("proj4");
+
+// 농림수산식품교육문화정보원 팜맵 API가 쓰는 좌표계 (EPSG:5179, GRS80 중부원점)
+const KOREA_5179 = "+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,32 +82,40 @@ async function fetchAgriHourlyWeather(obsrSpotCd, dateStr, hourStr) {
 }
 
 /**
- * [3] 농촌진흥청 국립농업과학원_농경지화학성 통계정보 V2
+ * [3] 농림수산식품교육문화정보원_팜맵기반 토양검정 조회 서비스 (좌표 기반, 실측값)
+ * 입력 위경도(WGS84)를 팜맵 좌표계(EPSG:5179)로 변환한 뒤, 해당 농지 필지의
+ * 가장 최근 토양검정 실측값(산도·유기물·유효인산·유효규산·전기전도도)을 가져옵니다.
  */
-async function fetchSoilChemicalStatistics(stdgCd) {
-    const url = `https://apis.data.go.kr/1390802/SoilEnviron/SoilExamStat/V2/getFarmExamSaInfo?serviceKey=${API_KEY}&STDG_CD=${stdgCd}&Request_Type=JSON`;
+async function fetchSoilAnalysis(lat, lng) {
+    const [positionX, positionY] = proj4("EPSG:4326", KOREA_5179, [parseFloat(lng), parseFloat(lat)]);
+    const url = `https://apis.data.go.kr/B552895/rest/farmmap/getFarmmapSoilAnalysisService/getCoordinateBasedSoilAnalsInfo?serviceKey=${API_KEY}&numOfRows=1&pageNo=1&type=xml&positionX=${positionX}&positionY=${positionY}`;
 
     try {
         const response = await fetch(url);
-        const data = await response.json();
-        const item = data.response.body.items.item[0];
+        const xml = await response.text();
+
+        if (!xml.includes("<resultCode>0</resultCode>")) {
+            throw new Error(extractXmlTag(xml, "resultMsg") || "토양 실측 데이터 없음");
+        }
 
         return {
-            averagePh: parseFloat(item.acid_Avg) || 6.2,
-            organicMatter: parseFloat(item.om_Avg) || 25.0,
-            availablePhosphate: parseFloat(item.vldpha_Avg) || 400.0,
+            soilPh: parseFloat(extractXmlTag(xml, "acidity")) || 6.0,
+            soilOrganic: parseFloat(extractXmlTag(xml, "ormtCont")) || 22.0,
+            soilPhosphate: parseFloat(extractXmlTag(xml, "vdphdy")) || 350.0,
+            soilSilicate: parseFloat(extractXmlTag(xml, "vdsidy")) || 0.0,
+            soilEc: parseFloat(extractXmlTag(xml, "ecd")) || 0.0,
         };
     } catch (error) {
-        console.error("❌ 농경지화학성 V2 API 에러 (백업 구동):", error);
-        return { averagePh: 6.0, organicMatter: 22.0, availablePhosphate: 350.0 };
+        console.error("❌ 팜맵 토양검정 API 에러 (백업 구동):", error.message);
+        return { soilPh: 6.0, soilOrganic: 22.0, soilPhosphate: 350.0, soilSilicate: 0.0, soilEc: 0.0 };
     }
 }
 
 app.get("/api/getMergedData", async (req, res) => {
-    const { stnId, stationId, stdgCd, dateStr, timeStr } = req.query;
+    const { stnId, stationId, lat, lng, dateStr, timeStr } = req.query;
 
-    if (!stdgCd || !dateStr || !timeStr) {
-        return res.status(400).json({ error: "stdgCd, dateStr, timeStr는 필수 파라미터입니다." });
+    if (!lat || !lng || !dateStr || !timeStr) {
+        return res.status(400).json({ error: "lat, lng, dateStr, timeStr는 필수 파라미터입니다." });
     }
 
     try {
@@ -111,10 +123,10 @@ app.get("/api/getMergedData", async (req, res) => {
 
         const hourStr = timeStr.slice(0, 2); // "1200" -> "12"
 
-        const [asosWeather, agriWeather, soilChemical] = await Promise.all([
+        const [asosWeather, agriWeather, soilAnalysis] = await Promise.all([
             fetchAsosHourlyWeather(stnId || "108", dateStr, hourStr),
             fetchAgriHourlyWeather(stationId, dateStr, hourStr),
-            fetchSoilChemicalStatistics(stdgCd),
+            fetchSoilAnalysis(lat, lng),
         ]);
 
         const finalIntegratedData = {
@@ -123,9 +135,11 @@ app.get("/api/getMergedData", async (req, res) => {
             solarRadiation: asosWeather.solarRadiation,
             soilTemp: agriWeather.soilTemp,
             soilMoisture: agriWeather.soilMoisture,
-            soilPh: soilChemical.averagePh,
-            soilOrganic: soilChemical.organicMatter,
-            soilPhosphate: soilChemical.availablePhosphate,
+            soilPh: soilAnalysis.soilPh,
+            soilOrganic: soilAnalysis.soilOrganic,
+            soilPhosphate: soilAnalysis.soilPhosphate,
+            soilSilicate: soilAnalysis.soilSilicate,
+            soilEc: soilAnalysis.soilEc,
             timestamp: new Date().toLocaleString(),
         };
 

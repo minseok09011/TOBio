@@ -257,7 +257,7 @@
                 statusMsg.innerText = `2단계: 가장 가까운 [기상청 ${closestStation.name} 관측소(${minDistance.toFixed(1)}km)] / [농업기상 ${closestAgriStation.name} 관측지점(${minAgriDistance.toFixed(1)}km)] 데이터 수집 중...`;
                 
                 const backendBaseUrl = "https://microbe-recommend-website.onrender.com";
-                const backendUrl = `${backendBaseUrl}/api/getMergedData?stnId=${stnId}&stationId=${stationId}&stdgCd=${stdgCd}&dateStr=${dateStr}&timeStr=${timeStr}`;
+                const backendUrl = `${backendBaseUrl}/api/getMergedData?stnId=${stnId}&stationId=${stationId}&lat=${userLat}&lng=${userLng}&dateStr=${dateStr}&timeStr=${timeStr}`;
                 
                 const backendRes = await fetch(backendUrl);
                 if (!backendRes.ok) throw new Error("공공데이터를 불러오는 중 백엔드 에러가 발생했습니다.");
