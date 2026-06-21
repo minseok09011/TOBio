@@ -9,6 +9,8 @@
     <!-- 📬 우체국/Daum 우편번호 검색 팝업 라이브러리 추가 (에러 없음) -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <!-- 🚨 에러를 유발하던 카카오 지도 스크립트는 완전히 삭제했습니다! -->
+    <!-- 농업기상 관측지점 좌표 목록 (backend/scripts/buildAgriStations.js로 생성됨) -->
+    <script src="js/agriStations.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen p-6 font-sans">
     <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg p-8">
@@ -225,8 +227,21 @@
                     }
                 });
 
-                const stnId = closestStation.id; 
-                const stationId = "123"; // 농업기상 관측소 ID (향후 실제 매핑 필요시 사용)
+                const stnId = closestStation.id;
+
+                // [관측지점 매핑] 내 밭의 위경도로부터 농업기상 관측지점(215개) 중 가장 가까운 지점 매핑
+                let closestAgriStation = AGRI_STATIONS[0];
+                let minAgriDistance = Infinity;
+
+                AGRI_STATIONS.forEach(station => {
+                    const dist = getDistanceFromLatLonInKm(userLat, userLng, station.lat, station.lng);
+                    if (dist < minAgriDistance) {
+                        minAgriDistance = dist;
+                        closestAgriStation = station;
+                    }
+                });
+
+                const stationId = closestAgriStation.id;
 
                 // [시간 구하기]
                 const now = new Date();
@@ -239,7 +254,7 @@
                 const timeStr = `${hour}00`; 
 
                 // [백엔드 통신]
-                statusMsg.innerText = `2단계: 가장 가까운 [기상청 ${closestStation.name} 관측소(${minDistance.toFixed(1)}km)] 데이터 수집 중...`;
+                statusMsg.innerText = `2단계: 가장 가까운 [기상청 ${closestStation.name} 관측소(${minDistance.toFixed(1)}km)] / [농업기상 ${closestAgriStation.name} 관측지점(${minAgriDistance.toFixed(1)}km)] 데이터 수집 중...`;
                 
                 const backendBaseUrl = "https://microbe-recommend-website.onrender.com";
                 const backendUrl = `${backendBaseUrl}/api/getMergedData?stnId=${stnId}&stationId=${stationId}&stdgCd=${stdgCd}&dateStr=${dateStr}&timeStr=${timeStr}`;
@@ -256,7 +271,7 @@
                 localStorage.setItem("userCrop", crop);
                 
                 console.log("획득한 최종 데이터:", finalMergedData);
-                alert(`데이터 수집 완료!\n\n📍 위치: ${address}\n☁️ 기상 매칭: ${closestStation.name} 관측소 (약 ${minDistance.toFixed(1)}km 거리)\n📂 개발자 도구(F12) 콘솔에서 데이터 확인 가능`);
+                alert(`데이터 수집 완료!\n\n📍 위치: ${address}\n☁️ 기상 매칭: ${closestStation.name} 관측소 (약 ${minDistance.toFixed(1)}km)\n🌱 농업기상 매칭: ${closestAgriStation.name} 관측지점 (약 ${minAgriDistance.toFixed(1)}km)\n📂 개발자 도구(F12) 콘솔에서 데이터 확인 가능`);
                 
             } catch (error) {
                 console.error(error);
