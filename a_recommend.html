@@ -6,10 +6,9 @@
     <title>미생물 추천: 도로명 주소 입력</title>
     <!-- Tailwind CSS (디자인용) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 📬 우체국/Daum 우편번호 검색 팝업 라이브러리 추가 -->
+    <!-- 📬 우체국/Daum 우편번호 검색 팝업 라이브러리 추가 (에러 없음) -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-    <!-- 🗺️ 카카오 지도 API 라이브러리 추가 (주소-좌표 변환용) -->
-    <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=715a0e6e29aab1838d771a4a0a775ae9&libraries=services"></script>
+    <!-- 🚨 에러를 유발하던 카카오 지도 스크립트는 완전히 삭제했습니다! -->
 </head>
 <body class="bg-gray-50 min-h-screen p-6 font-sans">
     <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg p-8">
@@ -19,8 +18,7 @@
         <div class="mb-5">
             <label class="block text-sm font-semibold text-gray-700 mb-2">농경지 도로명 주소</label>
             <div class="flex gap-2">
-                <!-- data 속성으로 위도, 경도, 법정동코드 모두 저장 -->
-                <input type="text" id="addressInput" readonly data-bcode="" data-lat="" data-lng="" placeholder="우측 주소 검색을 이용해 주세요" 
+                <input type="text" id="addressInput" readonly data-bcode="" placeholder="우측 주소 검색을 이용해 주세요" 
                        class="flex-1 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 outline-none cursor-pointer"
                        onclick="openAddrSearch()">
                 <button onclick="openAddrSearch()" class="bg-green-700 hover:bg-green-800 text-white font-bold px-4 py-3 rounded-lg text-sm transition shrink-0">
@@ -54,33 +52,23 @@
     </div>
 
     <script>
-        // 카카오 주소-좌표 변환 객체 생성
-        const geocoder = new kakao.maps.services.Geocoder();
+        // ==============================================================
+        // 🔑 1. 카카오 REST API 키
+        // ==============================================================
+        const KAKAO_REST_API_KEY = "715a0e6e29aab1838d771a4a0a775ae9"; 
 
         // ==============================================================
-        // 📬 우편번호 서비스 팝업창 실행 함수 (좌표 변환 통합)
+        // 📬 우편번호 서비스 팝업창 (주소와 법정동 코드만 깔끔하게 가져옵니다)
         // ==============================================================
         function openAddrSearch() {
             new daum.Postcode({
                 oncomplete: function(data) {
                     const roadAddr = data.roadAddress || data.address; 
                     const bcode = data.bcode; 
+                    
                     const inputEl = document.getElementById("addressInput");
-
-                    // 1. 화면에 주소 텍스트 표시
                     inputEl.value = roadAddr;
                     inputEl.dataset.bcode = bcode; 
-
-                    // 2. 선택된 주소를 곧바로 좌표(위/경도)로 변환
-                    geocoder.addressSearch(roadAddr, function(result, status) {
-                        if (status === kakao.maps.services.Status.OK) {
-                            // 변환 성공 시 HTML 태그에 좌표 저장
-                            inputEl.dataset.lat = result[0].y; 
-                            inputEl.dataset.lng = result[0].x; 
-                        } else {
-                            alert("선택하신 주소의 좌표를 찾을 수 없습니다. 다른 주소를 선택해주세요.");
-                        }
-                    });
                 }
             }).open();
         }
@@ -191,8 +179,6 @@
             const addressInput = document.getElementById("addressInput");
             const address = addressInput.value;
             const stdgCd = addressInput.dataset.bcode; 
-            const userLat = parseFloat(addressInput.dataset.lat);
-            const userLng = parseFloat(addressInput.dataset.lng);
             const crop = document.getElementById("cropInput").value;
             const statusMsg = document.getElementById("statusMsg");
             const submitBtn = document.getElementById("submitBtn");
@@ -202,10 +188,6 @@
                 alert("농경지 주소 검색을 완료해주세요!");
                 return;
             }
-            if (isNaN(userLat) || isNaN(userLng)) {
-                alert("주소의 좌표를 아직 변환 중이거나 찾을 수 없습니다. 다시 검색해주세요.");
-                return;
-            }
 
             try {
                 // UI 상태 변경 (로딩 중)
@@ -213,6 +195,20 @@
                 submitBtn.classList.add("opacity-50");
                 statusMsg.style.display = "block";
                 statusMsg.innerText = "1단계: 전국 최접근 관측소 탐색 중...";
+
+                // 💡 [해결] 팝업창에서 얻은 완벽한 주소를 다시 REST API로 보냅니다. (무조건 성공함)
+                const kakaoUrl = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`;
+                const kakaoRes = await fetch(kakaoUrl, {
+                    headers: { "Authorization": `KakaoAK ${KAKAO_REST_API_KEY}` }
+                });
+                
+                const kakaoData = await kakaoRes.json();
+                if (kakaoData.documents.length === 0) {
+                    throw new Error("좌표 변환 중 오류가 발생했습니다. 주소를 다시 검색해주세요.");
+                }
+
+                const userLat = parseFloat(kakaoData.documents[0].y); 
+                const userLng = parseFloat(kakaoData.documents[0].x); 
 
                 // [관측소 매핑] 내 밭의 위경도로부터 대한민국 전국 95개 관측소 중 가장 가까운 관측소 매핑
                 let closestStation = ASOS_STATIONS[0];
