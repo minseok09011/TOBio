@@ -6,8 +6,10 @@
     <title>미생물 추천: 도로명 주소 입력</title>
     <!-- Tailwind CSS (디자인용) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 📬 우체국/Daum 우편번호 검색 팝업 라이브러리 추가 (무료, API 키 불필요) -->
+    <!-- 📬 우체국/Daum 우편번호 검색 팝업 라이브러리 추가 -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <!-- 🗺️ 카카오 지도 API 라이브러리 추가 (주소-좌표 변환용) -->
+    <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=715a0e6e29aab1838d771a4a0a775ae9&libraries=services"></script>
 </head>
 <body class="bg-gray-50 min-h-screen p-6 font-sans">
     <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg p-8">
@@ -17,11 +19,11 @@
         <div class="mb-5">
             <label class="block text-sm font-semibold text-gray-700 mb-2">농경지 도로명 주소</label>
             <div class="flex gap-2">
-                <!-- 💡 해결책: 전역변수 대신 태그 자체에 data-bcode 속성을 만들어 법정동코드를 안전하게 보관합니다. -->
-                <input type="text" id="addressInput" readonly data-bcode="" placeholder="우측 주소 검색을 이용해 주세요" 
+                <!-- data 속성으로 위도, 경도, 법정동코드 모두 저장 -->
+                <input type="text" id="addressInput" readonly data-bcode="" data-lat="" data-lng="" placeholder="우측 주소 검색을 이용해 주세요" 
                        class="flex-1 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 outline-none cursor-pointer"
                        onclick="openAddrSearch()">
-                <button onclick="openAddrSearch()" class="bg-green-700 hover:bg-green-800 text-white font-bold px-4 py-3 rounded-lg text-sm transition">
+                <button onclick="openAddrSearch()" class="bg-green-700 hover:bg-green-800 text-white font-bold px-4 py-3 rounded-lg text-sm transition shrink-0">
                     주소 검색
                 </button>
             </div>
@@ -52,38 +54,41 @@
     </div>
 
     <script>
-        // ==============================================================
-        // 🔑 1. 카카오 REST API 키
-        // ==============================================================
-        const KAKAO_REST_API_KEY = "715a0e6e29aab1838d771a4a0a775ae9"; 
+        // 카카오 주소-좌표 변환 객체 생성
+        const geocoder = new kakao.maps.services.Geocoder();
 
         // ==============================================================
-        // 📬 우편번호 서비스 팝업창 실행 함수
+        // 📬 우편번호 서비스 팝업창 실행 함수 (좌표 변환 통합)
         // ==============================================================
         function openAddrSearch() {
             new daum.Postcode({
                 oncomplete: function(data) {
-                    const roadAddr = data.roadAddress || data.address; // 도로명 주소 선택
-                    const bcode = data.bcode; // 10자리 법정동 코드
-                    
-                    // 화면 입력창 요소를 가져와 주소와 데이터를 안전하게 매핑합니다.
+                    const roadAddr = data.roadAddress || data.address; 
+                    const bcode = data.bcode; 
                     const inputEl = document.getElementById("addressInput");
-                    inputHepler(inputEl, roadAddr, bcode);
+
+                    // 1. 화면에 주소 텍스트 표시
+                    inputEl.value = roadAddr;
+                    inputEl.dataset.bcode = bcode; 
+
+                    // 2. 선택된 주소를 곧바로 좌표(위/경도)로 변환
+                    geocoder.addressSearch(roadAddr, function(result, status) {
+                        if (status === kakao.maps.services.Status.OK) {
+                            // 변환 성공 시 HTML 태그에 좌표 저장
+                            inputEl.dataset.lat = result[0].y; 
+                            inputEl.dataset.lng = result[0].x; 
+                        } else {
+                            alert("선택하신 주소의 좌표를 찾을 수 없습니다. 다른 주소를 선택해주세요.");
+                        }
+                    });
                 }
             }).open();
         }
 
-        // 입력창 엘리먼트에 직접 데이터를 안전하게 킵(Keep)하는 헬퍼 함수
-        function inputHepler(element, address, bcode) {
-            element.value = address;
-            element.dataset.bcode = bcode; // HTML 태그의 data-bcode 속성에 저장!
-        }
-
         // ==============================================================
-        // 🗺️ 2. 기상청 ASOS 관측소 기초 데이터 (대한민국 전국 95개 관측소 메타데이터)
+        // 🗺️ 2. 기상청 ASOS 관측소 기초 데이터 (전국 95개 관측소)
         // ==============================================================
         const ASOS_STATIONS = [
-            // 서울/인천/경기권
             { id: "108", name: "서울", lat: 37.5714, lng: 126.9658 },
             { id: "119", name: "수원", lat: 37.2723, lng: 126.9853 },
             { id: "112", name: "인천", lat: 37.4777, lng: 126.6249 },
@@ -93,8 +98,6 @@
             { id: "99", name: "파주", lat: 37.8859, lng: 126.7665 },
             { id: "202", name: "양평", lat: 37.4886, lng: 127.4945 },
             { id: "203", name: "이천", lat: 37.2640, lng: 127.4842 },
-            
-            // 강원권
             { id: "90", name: "속초", lat: 38.2509, lng: 128.5647 },
             { id: "93", name: "북춘천", lat: 37.9475, lng: 127.7547 },
             { id: "95", name: "철원", lat: 38.1479, lng: 127.3042 },
@@ -109,8 +112,6 @@
             { id: "216", name: "정선군", lat: 37.3789, lng: 128.6650 },
             { id: "217", name: "영월", lat: 37.1813, lng: 128.4610 },
             { id: "214", name: "태백", lat: 37.1714, lng: 128.9850 },
-
-            // 충청도/세종/대전
             { id: "232", name: "천안", lat: 36.7667, lng: 127.1500 },
             { id: "131", name: "청주", lat: 36.6392, lng: 127.4406 },
             { id: "133", name: "대전", lat: 36.3720, lng: 127.3721 },
@@ -123,8 +124,6 @@
             { id: "221", name: "제천", lat: 37.1642, lng: 128.1963 },
             { id: "239", name: "세종", lat: 36.4833, lng: 127.2833 },
             { id: "127", name: "충주", lat: 36.9853, lng: 127.9547 },
-
-            // 전라도/광주
             { id: "146", name: "전주", lat: 35.8244, lng: 127.1500 },
             { id: "156", name: "광주", lat: 35.1729, lng: 126.8916 },
             { id: "140", name: "군산", lat: 35.9725, lng: 126.7107 },
@@ -144,8 +143,6 @@
             { id: "252", name: "영광군", lat: 35.2774, lng: 126.5122 },
             { id: "255", name: "무안군", lat: 34.9904, lng: 126.4811 },
             { id: "257", name: "양양", lat: 38.0754, lng: 128.6189 },
-
-            // 경상도/대구/부산/울산
             { id: "143", name: "대구", lat: 35.8779, lng: 128.6529 },
             { id: "159", name: "부산", lat: 35.1047, lng: 129.0320 },
             { id: "152", name: "울산", lat: 35.5820, lng: 129.3338 },
@@ -170,8 +167,6 @@
             { id: "192", name: "진주", lat: 35.1729, lng: 128.0833 },
             { id: "115", name: "울릉도", lat: 37.4813, lng: 130.8986 },
             { id: "130", name: "울진", lat: 36.9912, lng: 129.4122 },
-
-            // 제주권
             { id: "184", name: "제주", lat: 33.5141, lng: 126.5297 },
             { id: "185", name: "고산", lat: 33.2922, lng: 126.1623 },
             { id: "188", name: "성산", lat: 33.3854, lng: 126.8804 },
@@ -195,14 +190,20 @@
         async function submitRecommendWithAddress() {
             const addressInput = document.getElementById("addressInput");
             const address = addressInput.value;
-            // 💡 해결책: HTML 태그에 숨겨둔 dataset에서 bcode(법정동코드)를 가져옵니다.
             const stdgCd = addressInput.dataset.bcode; 
+            const userLat = parseFloat(addressInput.dataset.lat);
+            const userLng = parseFloat(addressInput.dataset.lng);
             const crop = document.getElementById("cropInput").value;
             const statusMsg = document.getElementById("statusMsg");
             const submitBtn = document.getElementById("submitBtn");
 
+            // 값 검증
             if (!address || !stdgCd) {
                 alert("농경지 주소 검색을 완료해주세요!");
+                return;
+            }
+            if (isNaN(userLat) || isNaN(userLng)) {
+                alert("주소의 좌표를 아직 변환 중이거나 찾을 수 없습니다. 다시 검색해주세요.");
                 return;
             }
 
@@ -211,24 +212,9 @@
                 submitBtn.disabled = true;
                 submitBtn.classList.add("opacity-50");
                 statusMsg.style.display = "block";
-                statusMsg.innerText = "1단계: 주소 좌표화 및 전국 최접근 관측소 탐색 중...";
+                statusMsg.innerText = "1단계: 전국 최접근 관측소 탐색 중...";
 
-                // [좌표 변환] 카카오 로컬 검색 API 호출
-                const kakaoUrl = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`;
-                const kakaoRes = await fetch(kakaoUrl, {
-                    headers: { "Authorization": `KakaoAK ${KAKAO_REST_API_KEY}` }
-                });
-                
-                const kakaoData = await kakaoRes.json();
-                if (kakaoData.documents.length === 0) {
-                    throw new Error("좌표 변환 중 오류가 발생했습니다. 주소를 다시 검색해주세요.");
-                }
-
-                const locationDoc = kakaoData.documents[0];
-                const userLat = parseFloat(locationDoc.y); // 실제 위도
-                const userLng = parseFloat(locationDoc.x); // 실제 경도
-
-                // [관측소 매핑] 내 위경도로부터 대한민국 전국 95개 관측소 중 가장 가까운 관측소 매핑
+                // [관측소 매핑] 내 밭의 위경도로부터 대한민국 전국 95개 관측소 중 가장 가까운 관측소 매핑
                 let closestStation = ASOS_STATIONS[0];
                 let minDistance = Infinity;
 
