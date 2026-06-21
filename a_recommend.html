@@ -16,18 +16,19 @@
     <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg p-8">
         <h1 class="text-2xl font-bold text-green-700 mb-6">🌱 내 농경지 정보 입력</h1>
         
-        <!-- 1. 도로명 주소 입력 -->
+        <!-- 1. 농경지 주소 입력 (도로명 또는 지번, 직접 입력 가능) -->
         <div class="mb-5">
-            <label class="block text-sm font-semibold text-gray-700 mb-2">농경지 도로명 주소</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">농경지 주소 (도로명 또는 지번)</label>
             <div class="flex gap-2">
-                <input type="text" id="addressInput" readonly data-bcode="" placeholder="우측 주소 검색을 이용해 주세요" 
-                       class="flex-1 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 outline-none cursor-pointer"
-                       onclick="openAddrSearch()">
+                <input type="text" id="addressInput" placeholder="예: 전라남도 화순군 도암면 왕정리 441-3"
+                       class="flex-1 px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
                 <button onclick="openAddrSearch()" class="bg-green-700 hover:bg-green-800 text-white font-bold px-4 py-3 rounded-lg text-sm transition shrink-0">
                     주소 검색
                 </button>
             </div>
-            <p class="text-xs text-gray-500 mt-2">정확한 날씨와 흙토람 토양 데이터를 불러오기 위해 필요합니다.</p>
+            <p class="text-xs text-gray-500 mt-2">
+                건물이 있는 곳은 "주소 검색"이 편리하고, 도로명주소가 없는 농지 지번은 직접 입력해주세요.
+            </p>
         </div>
 
         <!-- 2. 작물 선택 -->
@@ -60,17 +61,14 @@
         const KAKAO_REST_API_KEY = "715a0e6e29aab1838d771a4a0a775ae9"; 
 
         // ==============================================================
-        // 📬 우편번호 서비스 팝업창 (주소와 법정동 코드만 깔끔하게 가져옵니다)
+        // 📬 우편번호 서비스 팝업창 (편의용 — 건물이 있는 주소를 빠르게 채워줍니다.
+        // 도로명주소가 없는 농지 지번은 부정확할 수 있으니 입력창에서 직접 수정 가능합니다)
         // ==============================================================
         function openAddrSearch() {
             new daum.Postcode({
                 oncomplete: function(data) {
-                    const roadAddr = data.roadAddress || data.address; 
-                    const bcode = data.bcode; 
-                    
-                    const inputEl = document.getElementById("addressInput");
-                    inputEl.value = roadAddr;
-                    inputEl.dataset.bcode = bcode; 
+                    const roadAddr = data.roadAddress || data.address;
+                    document.getElementById("addressInput").value = roadAddr;
                 }
             }).open();
         }
@@ -179,15 +177,14 @@
         // ==============================================================
         async function submitRecommendWithAddress() {
             const addressInput = document.getElementById("addressInput");
-            const address = addressInput.value;
-            const stdgCd = addressInput.dataset.bcode; 
+            const address = addressInput.value.trim();
             const crop = document.getElementById("cropInput").value;
             const statusMsg = document.getElementById("statusMsg");
             const submitBtn = document.getElementById("submitBtn");
 
             // 값 검증
-            if (!address || !stdgCd) {
-                alert("농경지 주소 검색을 완료해주세요!");
+            if (!address) {
+                alert("농경지 주소를 입력해주세요!");
                 return;
             }
 
@@ -198,22 +195,25 @@
                 statusMsg.style.display = "block";
                 statusMsg.innerText = "1단계: 전국 최접근 관측소 탐색 중...";
 
-                // 💡 [해결] 팝업창에서 얻은 완벽한 주소를 다시 REST API로 보냅니다. (무조건 성공함)
+                // 입력한 주소(도로명 또는 지번)를 카카오 주소 검색으로 좌표+법정동코드 변환
+                // (도로명주소가 없는 농지 지번도 지번 검색으로 정확히 매칭됩니다)
                 const kakaoUrl = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`;
                 const kakaoRes = await fetch(kakaoUrl, {
                     headers: { "Authorization": `KakaoAK ${KAKAO_REST_API_KEY}` }
                 });
-                
+
                 const kakaoData = await kakaoRes.json();
                 if (!kakaoData.documents) {
                     throw new Error("카카오 주소 검색 API 오류: " + (kakaoData.message || "알 수 없는 오류"));
                 }
                 if (kakaoData.documents.length === 0) {
-                    throw new Error("좌표 변환 중 오류가 발생했습니다. 주소를 다시 검색해주세요.");
+                    throw new Error("주소를 찾을 수 없습니다. 다시 확인해주세요.");
                 }
 
-                const userLat = parseFloat(kakaoData.documents[0].y); 
-                const userLng = parseFloat(kakaoData.documents[0].x); 
+                const matched = kakaoData.documents[0];
+                const userLat = parseFloat(matched.y);
+                const userLng = parseFloat(matched.x);
+                const stdgCd = matched.address ? matched.address.b_code : "";
 
                 // [관측소 매핑] 내 밭의 위경도로부터 대한민국 전국 95개 관측소 중 가장 가까운 관측소 매핑
                 let closestStation = ASOS_STATIONS[0];
@@ -269,6 +269,7 @@
                 
                 localStorage.setItem("integratedSoilEnvironment", JSON.stringify(finalMergedData));
                 localStorage.setItem("userCrop", crop);
+                localStorage.setItem("userStdgCd", stdgCd);
                 
                 console.log("획득한 최종 데이터:", finalMergedData);
                 alert(`데이터 수집 완료!\n\n📍 위치: ${address}\n☁️ 기상 매칭: ${closestStation.name} 관측소 (약 ${minDistance.toFixed(1)}km)\n🌱 농업기상 매칭: ${closestAgriStation.name} 관측지점 (약 ${minAgriDistance.toFixed(1)}km)\n📂 개발자 도구(F12) 콘솔에서 데이터 확인 가능`);
