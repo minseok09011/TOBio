@@ -141,7 +141,14 @@
                 if (!backendRes.ok) throw new Error("공공데이터를 불러오는 중 백엔드 에러가 발생했습니다.");
                 
                 const finalMergedData = await backendRes.json();
-                
+
+                // [농지 여부 확인] 팜맵(위성/항공영상)에 등록된 농경지 필지가 전혀 없으면
+                // (isFarmland === false) 농지가 아닌 주소이므로 추천을 진행하지 않음.
+                // null이면 그 자체 확인이 실패한 경우라 차단하지 않고 그대로 진행
+                if (finalMergedData.isFarmland === false) {
+                    throw new Error("입력하신 주소는 등록된 농경지(팜맵)가 아닙니다. 실제 농경지 주소를 입력해주세요.");
+                }
+
                 // [완료 처리 및 로컬 저장]
                 statusMsg.innerText = "✅ 수집 완료! 추천 결과를 분석합니다.";
 

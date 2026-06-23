@@ -661,6 +661,54 @@ async function fetchSoilAnalysis(lat, lng) {
 }
 
 /**
+ * [3-1] 농림수산식품교육문화정보원_팜맵 조회 서비스 (좌표기반 팜맵 상세조회)
+ * 토양검정 실측값과는 별개로, 위성/항공영상으로 판독한 농경지 등록 여부 자체를 확인합니다.
+ * (토양검정은 "검사 기록이 있어야"만 값이 나와서, 진짜 농지인데 검사 기록이 없는 경우와
+ * 농지가 아닌 경우를 구분할 수 없습니다 — 이 API는 그 둘을 구분해줌)
+ * 해당 좌표에 등록된 팜맵 필지가 하나도 없으면 isFarmland: false를 반환해서, 농지가
+ * 아닌 주소까지 추천이 나가는 문제를 막는 데 사용합니다.
+ */
+async function fetchFarmmapParcelInfo(lat, lng) {
+    const [positionX, positionY] = proj4("EPSG:4326", KOREA_5179, [parseFloat(lng), parseFloat(lat)]);
+    const url = `https://apis.data.go.kr/B552895/getFarmmapService/getCoordinateBasedFarmmapInfo?serviceKey=${API_KEY}&type=xml&positionX=${positionX}&positionY=${positionY}`;
+
+    const response = await fetch(url);
+    const xml = await response.text();
+    const resultCode = extractXmlTag(xml, "resultCode");
+
+    if (resultCode === "3") {
+        // NODATA_ERROR: 해당 좌표에 등록된 팜맵 필지가 없음 (농지가 아닌 것으로 확정)
+        return { isFarmland: false, landUseType: null, parcelAddress: null };
+    }
+    if (resultCode !== "0" && resultCode !== "00") {
+        throw new Error(extractXmlTag(xml, "resultMsg") || xml.slice(0, 100) || "팜맵 조회 실패");
+    }
+
+    // totalCount 필드는 실측 결과 신뢰할 수 없음(필지가 있는데도 0으로 오는 경우 확인됨).
+    // <item> 태그 존재 자체로 필지 등록 여부를 판단함
+    if (!xml.includes("<item>")) {
+        return { isFarmland: false, landUseType: null, parcelAddress: null };
+    }
+
+    return {
+        isFarmland: true,
+        landUseType: extractXmlTag(xml, "intprNm") || null, // 판독명: 밭/논/과수원 등
+        parcelAddress: `${extractXmlTag(xml, "lglEmdNm")} ${extractXmlTag(xml, "lnm")}`.trim(),
+    };
+}
+
+// API 호출 자체가 실패(네트워크/인증 오류 등)하면 "농지 아님"으로 단정하지 않고
+// null(확인 불가)을 반환해서, 일시적 장애로 정상적인 농가 사용자를 막지 않게 함
+async function resolveFarmlandCheck(lat, lng) {
+    try {
+        return await fetchFarmmapParcelInfo(lat, lng);
+    } catch (error) {
+        console.error("❌ 팜맵 필지 조회 에러:", error.message);
+        return { isFarmland: null, landUseType: null, parcelAddress: null };
+    }
+}
+
+/**
  * [4] 농촌진흥청 국립농업과학원_농경지화학성 통계정보 V2 (법정동 단위, 등급별 면적 통계)
  * 좌표 기반 실측값이 없을 때의 대체 추정용입니다. 그 동네(법정동) 농경지 중
  * "면적이 가장 큰 등급"을 찾아 그 등급의 대표값(중간값)으로 추정합니다.
@@ -777,9 +825,10 @@ app.get("/api/getMergedData", async (req, res) => {
 
         const hourStr = timeStr.slice(0, 2); // "1200" -> "12"
 
-        const [agriWeather, soilData] = await Promise.all([
+        const [agriWeather, soilData, farmlandInfo] = await Promise.all([
             fetchAgriTenMinWeather(stationId, dateStr, hourStr),
             resolveSoilData(lat, lng, stdgCd),
+            resolveFarmlandCheck(lat, lng),
         ]);
 
         const finalIntegratedData = {
@@ -797,6 +846,9 @@ app.get("/api/getMergedData", async (req, res) => {
             soilCalcium: soilData.soilCalcium || 0.0,
             soilMagnesium: soilData.soilMagnesium || 0.0,
             soilDataSource: soilData.soilDataSource,
+            // true: 등록된 팜맵 농경지 확인됨 / false: 농경지 아님(추천 차단용) / null: 확인 실패(차단하지 않음)
+            isFarmland: farmlandInfo.isFarmland,
+            landUseType: farmlandInfo.landUseType,
             timestamp: new Date().toLocaleString(),
         };
 
