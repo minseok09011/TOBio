@@ -93,7 +93,17 @@ document.addEventListener("DOMContentLoaded", function () {
 /* ------------------------------------------------------------
    한글 라벨 (저장된 코드값 → 농민 언어)
    ------------------------------------------------------------ */
-const CROP_LABEL = { tomato: "🍅 토마토", pepper: "🌶️ 고추", cucumber: "🥒 오이" };
+const CROP_LABEL = {
+    tomato: "🍅 토마토",
+    pepper: "🌶️ 고추",
+    cucumber: "🥒 오이",
+    lettuce: "🥬 상추",
+    wheat: "🌾 밀",
+    maize: "🌽 옥수수",
+    soybean: "🫘 대두",
+    potato: "🥔 감자",
+    cabbage: "🥬 배추",
+};
 const NEED_LABEL = { disease: "병 막기", growth: "잘 자라게 하기" };
 const SPRAY_LABEL = {
     chemical: "농약",
