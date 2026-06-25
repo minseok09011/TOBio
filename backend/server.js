@@ -31,7 +31,7 @@ app.use(
 
 // ── [#3] 간단 rate limit (IP당 1분 30회) — 무료 쿼터(Voyage·Gemini·공공데이터) 소진 방지 ──
 const rateBucket = new Map(); // ip -> { count, resetAt }
-const RATE_LIMIT = 30;
+const RATE_LIMIT = 200;
 const RATE_WINDOW_MS = 60 * 1000;
 function rateLimit(req, res, next) {
     const ip = (req.headers["x-forwarded-for"] || req.ip || "unknown").toString().split(",")[0].trim();
