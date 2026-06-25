@@ -272,7 +272,8 @@ function canonicalSpeciesKey(rawName) {
 }
 
 function toDisplayName(key) {
-    return key.replace(/\b\w/g, (c) => c.toUpperCase());
+    const [genus, ...rest] = key.split(" ");
+    return genus.charAt(0).toUpperCase() + genus.slice(1) + (rest.length ? " " + rest.join(" ") : "");
 }
 
 function parsePriceWon(priceText) {
