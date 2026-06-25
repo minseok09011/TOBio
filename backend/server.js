@@ -31,7 +31,7 @@ app.use(
 
 // ── [#3] 간단 rate limit (IP당 1분 30회) — 무료 쿼터(Voyage·Gemini·공공데이터) 소진 방지 ──
 const rateBucket = new Map(); // ip -> { count, resetAt }
-const RATE_LIMIT = 200;
+const RATE_LIMIT = 30;
 const RATE_WINDOW_MS = 60 * 1000;
 function rateLimit(req, res, next) {
     const ip = (req.headers["x-forwarded-for"] || req.ip || "unknown").toString().split(",")[0].trim();
@@ -346,6 +346,7 @@ function loadMicrobeDisclosure() {
             priceWon: parsePriceWon(row["가격"]),
             contact: (row["연락처(사업장)"] || "").trim(),
             address: (row["제조장주소"] || "").trim(),
+            onlineUrl: (row["online_url"] || "").trim(), // 네이버쇼핑 등 온라인 구매 링크(없으면 빈칸 → 전화 폴백)
             registrar: (row["공시기관"] || "").trim(),
             validPeriod: (row["유효기간"] || "").trim(),
             registered: !UNREGISTERED_LABELS.has(registeredLabel),
@@ -437,6 +438,7 @@ function findMicrobeVendorInfo(speciesName) {
             product: v.product,
             price: v.price,
             contact: v.contact,
+            onlineUrl: v.onlineUrl, // 있으면 온라인 구매 링크, 없으면 contact(전화)로 안내
             address: v.address,
             registrar: v.registrar,
             validPeriod: v.validPeriod,
