@@ -8,6 +8,33 @@
    ============================================================ */
 
 /* ------------------------------------------------------------
+   0. 사이트 마스코트 — 모든 페이지 좌우 하단에 고정 표시 (PC 화면)
+   ------------------------------------------------------------ */
+(function renderMascots() {
+    function createMascot(src, side) {
+        const wrap = document.createElement("div");
+        wrap.className = `site-mascot-wrap site-mascot-wrap--${side}`;
+
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "";
+        img.className = "site-mascot";
+
+        const caption = document.createElement("span");
+        caption.className = "site-mascot__caption";
+        caption.textContent = "AI로 생성한 이미지입니다";
+
+        wrap.append(img, caption);
+        return wrap;
+    }
+
+    document.body.append(
+        createMascot("frontend/assets/first_image.png", "left"),
+        createMascot("frontend/assets/second_image.png", "right")
+    );
+})();
+
+/* ------------------------------------------------------------
    1. 홈 화면 — 버튼 → 페이지 이동
    ------------------------------------------------------------ */
 function goRecommend() {
