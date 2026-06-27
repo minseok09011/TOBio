@@ -89,24 +89,9 @@ function initRegionSelect() {
 }
 
 /* ------------------------------------------------------------
-   3. b: 살포 입력 → 저장 후 결과로 이동
+   3. b: 살포 시퀀스 입력은 b_spray.html 의 자체 스크립트가 처리합니다.
+      (자재 다중 입력 + 자동완성 + 균종 분기 → localStorage 저장 후 b-1로 이동)
    ------------------------------------------------------------ */
-function submitSpray() {
-    const last = document.getElementById("sprayLast").value;
-    const lastDate = document.getElementById("sprayLastDate").value;
-    const next = document.getElementById("sprayNext").value;
-
-    if (!lastDate) {
-        alert("언제 뿌렸는지 날짜를 골라 주세요!");
-        return;
-    }
-
-    localStorage.setItem("sprayLast", last);
-    localStorage.setItem("sprayLastDate", lastDate);
-    localStorage.setItem("sprayNext", next);
-
-    window.location.href = "b-1_spray-result.html";        // b-1: 살포 결과
-}
 
 /* ============================================================
    결과 화면 렌더링 (페이지 로드 시 자동 실행)
@@ -132,12 +117,6 @@ const CROP_LABEL = {
     cabbage: "🥬 배추",
 };
 const NEED_LABEL = { disease: "병 막기", growth: "잘 자라게 하기" };
-const SPRAY_LABEL = {
-    chemical: "농약",
-    microbe: "미생물 약제",
-    nutrient: "영양제(비료)",
-    none: "아무것도 안 뿌림"
-};
 
 /* ------------------------------------------------------------
    a-1: 추천 결과 — /api/recommendMicrobe(RAG+LLM) 호출 결과 표시
@@ -234,6 +213,9 @@ async function renderRecommendResult() {
             `<li>${s.title} <span class="value">(${s.journal}, ${s.year})</span></li>`
         ).join("");
 
+        // 추천된 첫 균종을 살포 시퀀스로 넘기기 위한 학명 (균종 자동판정용)
+        const topSpecies = (data.microbes && data.microbes[0] && data.microbes[0].species) || "";
+
         resultEl.innerHTML = `
             ${cards}
             <p class="result-card__effect">${data.explanation}</p>
@@ -246,7 +228,21 @@ async function renderRecommendResult() {
                     <ul>${sourcesList}</ul>
                 </details>
             ` : ""}
+            ${topSpecies ? `
+                <button type="button" id="goSprayBtn" class="btn btn--primary" style="margin-top:18px;"
+                        data-species="${topSpecies}">
+                    🗓️ 이 미생물 언제 뿌릴지 확인하기 →
+                </button>` : ""}
         `;
+
+        // 버튼: 추천 학명을 저장하고 살포 시퀀스로 이동 → b_spray가 균종을 자동판정
+        const goSprayBtn = document.getElementById("goSprayBtn");
+        if (goSprayBtn) {
+            goSprayBtn.addEventListener("click", () => {
+                localStorage.setItem("inoculantSpecies", goSprayBtn.dataset.species);
+                window.location.href = "b_spray.html";
+            });
+        }
     } catch (error) {
         console.error(error);
         resultEl.innerHTML = `<p class="notice">⚠️ ${error.message}</p>`;
@@ -254,66 +250,127 @@ async function renderRecommendResult() {
 }
 
 /* ------------------------------------------------------------
-   b-1: 살포 결과 — 임시 규칙으로 신호등 표시
-   ※ 실제로는 백엔드가 날씨·약제 간격을 보고 판단해 줍니다.
+   b-1: 살포 시퀀스 결과 — /api/spraySequence(엔진) 호출 결과 표시
+   b_spray.html에서 저장한 자재 목록·균종·예정일을 백엔드로 보내
+   "미생물제를 며칠 뒤 뿌려야 안전한지"를 계산해 신호등으로 보여줌.
    ------------------------------------------------------------ */
-function renderSprayResult() {
-    const last = localStorage.getItem("sprayLast") || "none";
-    const lastDateStr = localStorage.getItem("sprayLastDate");
-    const next = localStorage.getItem("sprayNext") || "microbe";
+const INOC_TYPE_KO = { bacteria: "세균제", fungus: "곰팡이제", both: "균종 미상(보수적)" };
 
-    // ── 임시 규칙: 마지막 살포일 + 7일 후부터 가능 ──
-    //    (실제 간격/날씨 판단은 백엔드가 계산)
-    const WAIT_DAYS = 7;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+function fmtKoreanDate(isoStr) {
+    if (!isoStr) return "";
+    const [y, m, d] = isoStr.split("-").map(Number);
+    return `${m}월 ${d}일`;
+}
 
-    const lastDate = lastDateStr ? new Date(lastDateStr) : today;
-    const canDate = new Date(lastDate);
-    canDate.setDate(canDate.getDate() + WAIT_DAYS);
+async function renderSprayResult() {
+    const resultEl = document.getElementById("sprayResult");
+    const summaryEl = document.getElementById("summary");
 
-    const dayMs = 1000 * 60 * 60 * 24;
-    const daysLeft = Math.ceil((canDate - today) / dayMs);
+    let materials;
+    try {
+        materials = JSON.parse(localStorage.getItem("spraySeqMaterials") || "[]");
+    } catch (e) { materials = []; }
 
-    // 신호등 판정
-    let cls, emoji, headline, dateLine;
-    const canDateText = `${canDate.getMonth() + 1}월 ${canDate.getDate()}일`;
-
-    if (daysLeft <= 0) {
-        cls = "signal--go"; emoji = "🟢";
-        headline = "오늘 뿌려도 괜찮아요";
-        dateLine = "지금 살포할 수 있어요";
-    } else if (daysLeft <= 2) {
-        cls = "signal--warn"; emoji = "🟡";
-        headline = "조금만 기다리세요";
-        dateLine = `${canDateText}부터 뿌릴 수 있어요`;
-    } else {
-        cls = "signal--stop"; emoji = "⛔";
-        headline = "아직 뿌리면 안 돼요";
-        dateLine = `${canDateText}부터 뿌릴 수 있어요`;
+    if (!materials.length) {
+        resultEl.innerHTML = `<p class="notice">먼저 <a href="b_spray.html">최근에 친 자재를 입력</a>해주세요.</p>`;
+        return;
     }
 
-    // 요약 칩
-    const summary = document.getElementById("summary");
-    if (summary) {
-        summary.innerHTML =
-            `<span class="summary__chip">최근: ${SPRAY_LABEL[last] || last}</span>` +
-            `<span class="summary__chip">뿌릴 것: ${SPRAY_LABEL[next] || next}</span>`;
+    const inoculantType = localStorage.getItem("spraySeqInoculantType") || "both";
+    const inoculantSpecies = localStorage.getItem("spraySeqInoculantSpecies") || "";
+    const inoculantDate = localStorage.getItem("spraySeqInoculantDate") || "";
+    let loc = {};
+    try { loc = JSON.parse(localStorage.getItem("spraySeqLocation") || "{}"); } catch (e) { loc = {}; }
+
+    // 입력 요약 칩
+    if (summaryEl) {
+        summaryEl.innerHTML =
+            `<span class="summary__chip">미생물: ${inoculantSpecies || INOC_TYPE_KO[inoculantType]}</span>` +
+            `<span class="summary__chip">친 자재 ${materials.length}건</span>`;
     }
 
-    document.getElementById("sprayResult").innerHTML = `
-        <div class="signal ${cls}">
-            <div class="signal__light">${emoji}</div>
-            <h2 class="signal__headline">${headline}</h2>
-            <p class="signal__date">📅 ${dateLine}</p>
-            <p class="signal__sub">
-                마지막으로 ${SPRAY_LABEL[last] || last}을(를) 뿌린 뒤
-                약 ${WAIT_DAYS}일 정도 간격을 두는 게 좋아요.
-            </p>
-        </div>
-        <p class="notice">
-            ※ 지금은 <b>예시</b>예요. 곧 우리 동네 날씨(비·바람)까지 보고
-            정확한 날짜를 알려 드립니다.
-        </p>
-    `;
+    resultEl.innerHTML = `<p class="notice">🧮 안전한 살포 시점을 계산하는 중입니다...</p>`;
+
+    try {
+        const res = await fetch(`${RECOMMEND_BACKEND_BASE_URL}/api/spraySequence`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                materials: materials.map(m => ({ kind: m.kind, name: m.name, appliedDate: m.appliedDate })),
+                inoculantType,
+                inoculantSpecies: inoculantSpecies || undefined,
+                inoculantDate: inoculantDate || undefined,
+                lat: loc.lat || undefined,
+                lng: loc.lng || undefined,
+                obsrSpotCd: loc.obsrSpotCd || undefined,
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "살포 시퀀스 계산 중 오류가 발생했습니다.");
+
+        // 신호등 색: 권장일까지 남은 일수로 판정 (예정일 없으면 오늘 기준)
+        const baseDate = inoculantDate ? new Date(inoculantDate) : new Date();
+        baseDate.setHours(0, 0, 0, 0);
+        const safe = new Date(data.safeDate);
+        const daysLeft = Math.round((safe - baseDate) / 86400000);
+
+        let cls, emoji, headline;
+        if (data.verdict === "safe" || daysLeft <= 0) {
+            cls = "signal--go"; emoji = "🟢";
+            headline = "지금 뿌려도 괜찮아요";
+        } else if (daysLeft <= 3) {
+            cls = "signal--warn"; emoji = "🟡";
+            headline = "조금만 더 기다리세요";
+        } else {
+            cls = "signal--stop"; emoji = "⛔";
+            headline = "아직 이릅니다";
+        }
+
+        const g = data.governingMaterial || {};
+        const safeText = fmtKoreanDate(data.safeDate);
+
+        // 자재별 내역 표
+        const perRows = (data.perMaterial || []).map(p => `
+            <div class="result-card__row">
+                <span class="label">${p.risk} ${p.name}${p.family ? ` <span class="value">(${p.family})</span>` : ""}</span>
+                <span class="value">${p.appliedDate} → ${fmtKoreanDate(p.clearDate)} 해제 (${p.term}일)</span>
+            </div>`).join("");
+
+        resultEl.innerHTML = `
+            <div class="signal ${cls}">
+                <div class="signal__light">${emoji}</div>
+                <h2 class="signal__headline">${headline}</h2>
+                <p class="signal__date">📅 ${safeText} 이후 살포 권장</p>
+                <p class="signal__sub">${data.headline}</p>
+            </div>
+
+            <div class="result-card">
+                <span class="result-card__badge">⏳ 가장 오래 기다려야 하는 자재</span>
+                <h2 class="result-card__name">${g.risk || ""} ${g.name || "-"}</h2>
+                ${g.family ? `<p class="result-card__sci">${g.family} · ${g.appliedDate} 살포 → ${g.term}일 후 해제</p>` : ""}
+            </div>
+
+            <div class="result-card">
+                <p class="label" style="margin-bottom:8px;">자재별 안전 해제일 (미생물: ${INOC_TYPE_KO[data.inoculantType] || INOC_TYPE_KO[inoculantType]} 기준)</p>
+                ${perRows}
+            </div>
+
+            ${data.tempAdvisory ? `<p class="notice">🌡️ ${data.tempAdvisory}</p>` : ""}
+
+            ${data.copperWarning && data.copperWarning.flag ? `
+                <div class="result-card" style="border:2px solid #d64545; background:#fff5f5;">
+                    <span class="result-card__badge" style="background:#d64545;">⚠️ 구리·황 누적 경고</span>
+                    <p class="result-card__effect">${data.copperWarning.message}</p>
+                </div>` : ""}
+
+            ${data.unmatchedMaterials && data.unmatchedMaterials.length ? `
+                <p class="notice">❓ 위험표에서 확인하지 못한 자재가 있어 <b>보수적으로(🟡)</b> 계산했습니다:
+                ${data.unmatchedMaterials.join(", ")}. 이름을 다시 확인하거나 종류 버튼으로 골라보세요.</p>` : ""}
+
+            <p class="notice">${data.note || ""} 표시된 간격은 단정값이 아니라 <b>최소 권장값</b>이며, 길수록 안전합니다.</p>
+        `;
+    } catch (error) {
+        console.error(error);
+        resultEl.innerHTML = `<p class="notice">⚠️ ${error.message}</p>`;
+    }
 }
