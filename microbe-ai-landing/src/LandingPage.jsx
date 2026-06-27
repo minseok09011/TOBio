@@ -108,7 +108,7 @@ function IconBox({ icon: Icon, className = "", iconClassName = "h-6 w-6 text-whi
 /* ──────────────────────────────────────────────────────────────
    1. HERO
 ────────────────────────────────────────────────────────────── */
-function Hero({ onStartRecommend, onStartCheck, user, onLoginClick, onLogout }) {
+function Hero({ onStartRecommend, onStartCheck, user, onLoginClick, onLogout, onMyRecords }) {
   const stats = [
     { value: "800+", label: "A급 논문 학습" },
     { value: "27종", label: "토양 상세 데이터 반영" },
@@ -131,7 +131,7 @@ function Hero({ onStartRecommend, onStartCheck, user, onLoginClick, onLogout }) 
       <div className="absolute inset-0 bg-black/40" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
 
-      <SiteHeader user={user} onLoginClick={onLoginClick} onLogout={onLogout} />
+      <SiteHeader user={user} onLoginClick={onLoginClick} onLogout={onLogout} onMyRecords={onMyRecords} />
 
       <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
         <Reveal>
@@ -208,7 +208,7 @@ function Hero({ onStartRecommend, onStartCheck, user, onLoginClick, onLogout }) 
 /* ──────────────────────────────────────────────────────────────
    1-1. 페이지 최상단 브랜드 로고 바
 ────────────────────────────────────────────────────────────── */
-function SiteHeader({ user, onLoginClick, onLogout }) {
+function SiteHeader({ user, onLoginClick, onLogout, onMyRecords }) {
   return (
     <header className="absolute top-0 left-0 right-0 z-20 px-4 pt-6 sm:pt-8">
       <div className="flex items-center justify-center gap-2">
@@ -225,6 +225,14 @@ function SiteHeader({ user, onLoginClick, onLogout }) {
             <span className="hidden sm:inline text-sm font-semibold text-white/90" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}>
               {user.name}님
             </span>
+            {onMyRecords && (
+              <button
+                onClick={onMyRecords}
+                className="rounded-md border border-white/50 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+              >
+                내 기록
+              </button>
+            )}
             <button
               onClick={onLogout}
               className="rounded-md border border-white/50 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
@@ -636,7 +644,7 @@ function ContactFooter() {
 /* ──────────────────────────────────────────────────────────────
    메인 페이지 — 마우스 글로우 커서까지 레퍼런스 그대로 재현
 ────────────────────────────────────────────────────────────── */
-export default function MicrobeAiLandingPage({ onStartRecommend, onStartCheck, user, onLoginClick, onLogout }) {
+export default function MicrobeAiLandingPage({ onStartRecommend, onStartCheck, user, onLoginClick, onLogout, onMyRecords }) {
   const glowRef = useRef(null);
 
   useEffect(() => {
@@ -664,6 +672,7 @@ export default function MicrobeAiLandingPage({ onStartRecommend, onStartCheck, u
         user={user}
         onLoginClick={onLoginClick}
         onLogout={onLogout}
+        onMyRecords={onMyRecords}
       />
       <OurSolution />
       <CoreFeatures />

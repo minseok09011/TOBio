@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, MapPin, X, AlertTriangle } from "lucide-react";
 import { CROPS, LOAD_STEPS, delay, searchAddress, fetchRecommend, searchSprayMaterials, fetchSpraySequence } from "./data.js";
+import SaveRecordButton from "./SaveRecordButton.jsx";
 
 export function TopBar({ title, onBack, backLabel }) {
   return (
@@ -514,6 +515,23 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
             살포 가능 확인하기
           </button>
         </div>
+        {/* 로그인 상태면 추천 결과를 내 기록에 저장 (로그인은 선택) */}
+        <div className="mb-3">
+          <SaveRecordButton
+            build={() => ({
+              kind: "recommend",
+              crop: cropName,
+              title: `${cropName || "작물"} 추천 미생물`,
+              summary: microbes
+                .map((m) => m.species || m.name || m.korName || m.korean_name)
+                .filter(Boolean)
+                .slice(0, 3)
+                .join(", "),
+              payload: { result, crop, cropName, address: addrName },
+            })}
+          />
+        </div>
+
         <button
           onClick={onHome}
           className="w-full rounded-md border-2 border-emerald-700 text-emerald-700 font-semibold py-3 hover:bg-emerald-50"
@@ -845,6 +863,19 @@ function SpraySequenceResult({ result }) {
         <p className="text-xs text-stone-500 leading-relaxed">🌡️ {result.tempAdvisory}</p>
       )}
       {result.note && <p className="text-[11px] text-stone-400 leading-relaxed">{result.note}</p>}
+
+      {/* 로그인 상태면 살포 확인 결과를 내 기록에 저장 (로그인은 선택) */}
+      <div className="pt-1">
+        <SaveRecordButton
+          build={() => ({
+            kind: "spray",
+            crop: "",
+            title: result.safeDate ? `살포 권장일 ${result.safeDate}` : "살포 확인 결과",
+            summary: result.headline || "",
+            payload: result,
+          })}
+        />
+      </div>
     </div>
   );
 }

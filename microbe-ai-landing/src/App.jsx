@@ -1,28 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MicrobeAiLandingPage from "./LandingPage.jsx";
 import { CropSelect, AddressInput, LoadingScreen, ResultScreen, CheckScreen } from "./AppFlow.jsx";
 import { CROPS } from "./data.js";
-import LoginModal, { loadUser, saveUser, clearUser } from "./LoginModal.jsx";
+import LoginModal from "./LoginModal.jsx";
+import RecordsScreen from "./RecordsScreen.jsx";
+import { onAuthChange, signOut } from "./records.js";
 
 export default function App() {
-  const [view, setView] = useState("landing"); // landing | crop | address | loading | result | check
+  const [view, setView] = useState("landing"); // landing | crop | address | loading | result | check | records
   const [crop, setCrop] = useState(null);
   const [address, setAddress] = useState(null);
   const [result, setResult] = useState(null);
   const [checkPrefill, setCheckPrefill] = useState({ microbe: "", crop: "" });
 
-  // 데모 로그인 상태 (LoginModal 참고 — 지금은 브라우저 저장, 추후 실제 인증으로 교체)
-  const [user, setUser] = useState(loadUser);
+  // 실제 인증 상태 (Supabase 세션). 새로고침/재방문에도 유지되며, 미설정 시 null.
+  const [user, setUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
 
+  useEffect(() => onAuthChange(setUser), []);
+
   function handleLogin(u) {
-    setUser(u);
-    saveUser(u);
+    setUser(u);            // onAuthChange 리스너도 곧 갱신하지만 즉시 반영
     setShowLogin(false);
   }
-  function handleLogout() {
-    setUser(null);
-    clearUser();
+  async function handleLogout() {
+    await signOut();       // 리스너가 user를 null로 갱신
   }
 
   function goHome() {
@@ -39,6 +41,11 @@ export default function App() {
   function startCheck() {
     setCheckPrefill({ microbe: "", crop: "" });
     setView("check");
+  }
+
+  function startMyRecords() {
+    setView("records");
+    window.scrollTo(0, 0);
   }
 
   function goToCheckFromResult() {
@@ -76,6 +83,8 @@ export default function App() {
         );
       case "check":
         return <CheckScreen prefill={checkPrefill} onBack={goHome} />;
+      case "records":
+        return <RecordsScreen onBack={goHome} />;
       default:
         return (
           <MicrobeAiLandingPage
@@ -84,6 +93,7 @@ export default function App() {
             user={user}
             onLoginClick={() => setShowLogin(true)}
             onLogout={handleLogout}
+            onMyRecords={startMyRecords}
           />
         );
     }
