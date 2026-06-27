@@ -10,7 +10,6 @@ import {
   Phone,
   ShoppingCart,
   Crown,
-  Tag,
   Sprout,
   Thermometer,
   Droplets,
@@ -19,7 +18,18 @@ import {
   ChevronDown,
   Lightbulb,
 } from "lucide-react";
-import { CROPS, LOAD_STEPS, delay, searchAddress, fetchRecommend, searchSprayMaterials, fetchSpraySequence, classifyInoculantSpecies } from "./data.js";
+import {
+  CROPS,
+  LOAD_STEPS,
+  delay,
+  searchAddress,
+  fetchRecommend,
+  searchSprayMaterials,
+  searchMicrobeProducts,
+  fetchSpraySequence,
+  classifyInoculantSpecies,
+  SPRAY_TYPE_OPTIONS,
+} from "./data.js";
 import SaveRecordButton from "./SaveRecordButton.jsx";
 import { listMyRecentAddresses } from "./records.js";
 import { Reveal } from "./LandingPage.jsx";
@@ -444,12 +454,6 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
   const [vendorCounts, setVendorCounts] = useState({});
   const [showReasons, setShowReasons] = useState({});
   const toggleReason = (i) => setShowReasons((prev) => ({ ...prev, [i]: !prev[i] }));
-  const [showAllPrices, setShowAllPrices] = useState({});
-  const toggleAllPrices = (key) => setShowAllPrices((prev) => ({ ...prev, [key]: !prev[key] }));
-  const parsePriceValue = (priceStr) => {
-    const m = (priceStr || "").match(/[\d,]+/);
-    return m ? parseInt(m[0].replace(/,/g, ""), 10) : Infinity;
-  };
   const getVendorCount = (i) => vendorCounts[i] ?? 3;
   const showMoreVendors = (i) => setVendorCounts((prev) => ({ ...prev, [i]: getVendorCount(i) + 5 }));
   const collapseVendors = (i) => setVendorCounts((prev) => ({ ...prev, [i]: 3 }));
@@ -477,12 +481,10 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
   const scientificEvidence = result.scientificEvidence || "";
   const sources = Array.isArray(result.sources) ? result.sources : [];
 
-  // 근거 강도/토양 출처는 "꽉 찬 별"만으로 표시(빈 별 ☆ 안 씀). 값이 없으면 항목 생략(안전).
+  // 근거 강도는 "꽉 찬 별"만으로 표시(빈 별 ☆ 안 씀). 값이 없으면 항목 생략(안전).
   const EVIDENCE_STARS = { strong: "★★★★★", moderate: "★★★★", weak: "★★★" };
   const evidenceStars = EVIDENCE_STARS[result.evidenceConfidence];
   const topScore = result?.evidenceScore?.topScore;
-  const SOIL_STARS = { "실측값": "★★★★★", "지역 추정값": "★★★★", "전국 평균값": "★★★" };
-  const soilStars = SOIL_STARS[result.soilDataSource];
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col">
@@ -510,22 +512,19 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
           </div>
         </Reveal>
 
-        {/* 토양 데이터 출처 안내 (백엔드 soilDataSource) — 상황 설명 위에 먼저, 별점과 함께 */}
+        {/* 토양 데이터 출처 안내 (백엔드 soilDataSource) — 상황 설명 위에 먼저 */}
         {result.soilDataSource === "전국 평균값" && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-3 text-xs text-amber-800 leading-relaxed">
-            <span className="text-amber-500 mr-1">{soilStars}</span>
             ℹ️ 이 주소의 실측·지역 토양 데이터가 없어 <strong>전국 평균값</strong>으로 추천했어요. 정확한 농경지 지번 주소를 입력하면 실측값 기준으로 더 정확해집니다.
           </div>
         )}
         {result.soilDataSource === "지역 추정값" && (
           <div className="bg-stone-100 rounded-2xl p-3.5 mb-3 text-xs text-stone-600 leading-relaxed">
-            <span className="text-amber-500 mr-1">{soilStars}</span>
             📊 이 농경지의 실측 기록이 없어, <strong>해당 지역(법정동) 토양 통계</strong>로 추정한 값을 기준으로 추천했어요.
           </div>
         )}
         {result.soilDataSource === "실측값" && (
           <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5 mb-3 text-xs text-emerald-800 leading-relaxed">
-            <span className="text-amber-500 mr-1">{soilStars}</span>
             🛰️ 이 농경지의 <strong>실측 토양검정 데이터</strong>를 기준으로 추천했어요.
           </div>
         )}
@@ -682,15 +681,10 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
                         </h5>
                         <div className="space-y-2">
                           {vendors.slice(0, getVendorCount(i)).map((v, vi) => {
-                            const products = v.products || [
-                              { product: v.productName || v.name, price: v.price, contact: v.phone, onlineUrl: v.onlineUrl },
-                            ];
-                            const sortedProducts = [...products].sort(
-                              (a, b) => parsePriceValue(a.price) - parsePriceValue(b.price)
-                            );
-                            const cheapest = sortedProducts[0];
-                            const extraCount = products.length - 1;
-                            const priceKey = `${i}-${vi}`;
+                            const productLabel = products[0]?.product
+                              ? `${products[0].product}${products.length > 1 ? ` 외 ${products.length - 1}개` : ""}`
+                              : "";
+                            const priceLabel = products.map((p) => p.price).filter(Boolean).join(", ");
                             const onlineUrl = products.find((p) => p.onlineUrl)?.onlineUrl;
                             const contact = products[0]?.contact;
                             return (
@@ -700,34 +694,9 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
                                   isTop ? "border-l-amber-400" : "border-l-emerald-600"
                                 } border-y border-r border-stone-200 bg-stone-50 px-3.5 py-3 text-xs`}
                               >
-                                <div className="flex items-start justify-between gap-2">
-                                  <strong className="text-sm text-stone-900">{v.company || v.seller || ""}</strong>
-                                  {cheapest?.price && (
-                                    <span className="inline-flex items-center gap-1 text-sm font-bold text-emerald-700 whitespace-nowrap">
-                                      <Tag className="h-3 w-3" />
-                                      {cheapest.price}
-                                    </span>
-                                  )}
-                                </div>
-                                {cheapest?.product && <div className="text-stone-600 mt-1">{cheapest.product}</div>}
-                                {extraCount > 0 && (
-                                  <button
-                                    onClick={() => toggleAllPrices(priceKey)}
-                                    className="mt-1 text-[11px] font-semibold text-stone-400 underline"
-                                  >
-                                    {showAllPrices[priceKey] ? "가격 접기" : `다른 가격 ${extraCount}개 더보기`}
-                                  </button>
-                                )}
-                                {showAllPrices[priceKey] && (
-                                  <ul className="mt-1.5 space-y-0.5">
-                                    {sortedProducts.slice(1).map((p, pi) => (
-                                      <li key={pi} className="flex items-center justify-between text-stone-500">
-                                        <span>{p.product}</span>
-                                        <span className="font-semibold text-stone-700">{p.price}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
+                                <strong className="text-sm text-stone-900">{v.company || v.seller || ""}</strong>
+                                {productLabel && <div className="text-stone-600 mt-1">{productLabel}</div>}
+                                {priceLabel && <div className="text-stone-500 mt-0.5">{priceLabel}</div>}
                                 {(contact || onlineUrl) && (
                                   <div className="mt-1.5 flex items-center gap-2">
                                     {contact && (
@@ -892,6 +861,7 @@ function MaterialRow({ row, onChange, onRemove, canRemove }) {
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [pickingCategory, setPickingCategory] = useState(false);
   const timerRef = useRef(null);
   const wrapRef = useRef(null);
 
@@ -923,40 +893,79 @@ function MaterialRow({ row, onChange, onRemove, canRemove }) {
     setOpen(false);
   }
 
+  function pickCategory(opt) {
+    onChange({ ...row, name: opt.key, kind: "type", family: opt.label });
+    setPickingCategory(false);
+  }
+
+  function clearCategory() {
+    onChange({ ...row, name: "", kind: undefined, family: undefined });
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 mb-2.5">
       <div className="flex items-start gap-2">
         <div ref={wrapRef} className="relative flex-1">
-          <input
-            value={row.name}
-            onChange={handleName}
-            placeholder="약제·비료 이름 (예: 코사이드, 오티바)"
-            autoComplete="off"
-            className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none focus:border-emerald-600"
-          />
-          {row.family && (
-            <span className="mt-1 inline-block text-[11px] text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">
-              {row.family}
-            </span>
-          )}
-          {searching && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg text-center text-xs text-stone-500 py-2.5 z-20">
-              검색 중...
+          {row.kind === "type" ? (
+            <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+              <span className="text-sm font-semibold text-emerald-800">📦 {row.family}</span>
+              <button onClick={clearCategory} className="text-xs font-semibold text-stone-500 hover:text-stone-700">
+                변경
+              </button>
             </div>
-          )}
-          {open && !searching && results.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-52 overflow-y-auto z-20">
-              {results.map((item, i) => (
-                <div
-                  key={i}
-                  onClick={() => pick(item)}
-                  className="px-3 py-2 cursor-pointer border-b border-stone-100 last:border-0 hover:bg-emerald-50"
-                >
-                  <div className="text-sm font-semibold text-stone-800">{item.name}</div>
-                  <div className="text-xs text-stone-500">{item.family || item.type || ""}</div>
+          ) : (
+            <>
+              <input
+                value={row.name}
+                onChange={handleName}
+                placeholder="농자재 이름 (예: 코사이드, 오티바)"
+                autoComplete="off"
+                className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none focus:border-emerald-600"
+              />
+              {row.family && (
+                <span className="mt-1 inline-block text-[11px] text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">
+                  {row.family}
+                </span>
+              )}
+              {searching && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg text-center text-xs text-stone-500 py-2.5 z-20">
+                  검색 중...
                 </div>
-              ))}
-            </div>
+              )}
+              {open && !searching && results.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-52 overflow-y-auto z-20">
+                  {results.map((item, i) => (
+                    <div
+                      key={i}
+                      onClick={() => pick(item)}
+                      className="px-3 py-2 cursor-pointer border-b border-stone-100 last:border-0 hover:bg-emerald-50"
+                    >
+                      <div className="text-sm font-semibold text-stone-800">{item.name}</div>
+                      <div className="text-xs text-stone-500">{item.family || item.type || ""}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setPickingCategory((v) => !v)}
+                className="mt-1 text-[11px] font-semibold text-stone-400 underline"
+              >
+                정확한 이름을 모르면 종류로 직접 선택
+              </button>
+              {pickingCategory && (
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                  {SPRAY_TYPE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => pickCategory(opt)}
+                      className="rounded-md border border-stone-200 px-2 py-1.5 text-[11px] text-stone-600 text-left hover:border-emerald-400 hover:bg-emerald-50"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
         {canRemove && (
@@ -983,17 +992,55 @@ const newMaterial = () => ({ name: "", kind: undefined, family: undefined, appli
 
 export function CheckScreen({ prefill, onBack, onResult }) {
   const [inoculantName, setInoculantName] = useState(prefill?.microbe || "");
+  const [inoculantSpecies, setInoculantSpecies] = useState(prefill?.microbe || ""); // 자동완성으로 확정된 학명
   const [inoculantType, setInoculantType] = useState("both"); // bacteria | fungus | both
   const [inoculantDate, setInoculantDate] = useState(todayStr());
   const [materials, setMaterials] = useState([newMaterial()]);
   const [checking, setChecking] = useState(false);
+  const [inoculantResults, setInoculantResults] = useState([]);
+  const [inoculantOpen, setInoculantOpen] = useState(false);
+  const [inoculantSearching, setInoculantSearching] = useState(false);
+  const inoculantTimerRef = useRef(null);
+  const inoculantWrapRef = useRef(null);
 
   useEffect(() => {
     setInoculantName(prefill?.microbe || "");
+    setInoculantSpecies(prefill?.microbe || "");
     setInoculantType(classifyInoculantSpecies(prefill?.microbe));
     setInoculantDate(todayStr());
     setMaterials([newMaterial()]);
   }, [prefill]);
+
+  useEffect(() => {
+    function outside(e) {
+      if (inoculantWrapRef.current && !inoculantWrapRef.current.contains(e.target)) setInoculantOpen(false);
+    }
+    document.addEventListener("click", outside);
+    return () => document.removeEventListener("click", outside);
+  }, []);
+
+  function handleInoculantNameChange(e) {
+    const name = e.target.value;
+    setInoculantName(name);
+    setInoculantSpecies(""); // 직접 수정하면 자동완성으로 확정된 학명은 초기화
+    clearTimeout(inoculantTimerRef.current);
+    setInoculantOpen(false);
+    if (name.trim().length < 1) return;
+    setInoculantSearching(true);
+    inoculantTimerRef.current = setTimeout(async () => {
+      const r = await searchMicrobeProducts(name);
+      setInoculantSearching(false);
+      setInoculantResults(r);
+      setInoculantOpen(true);
+    }, 300);
+  }
+
+  function pickInoculant(item) {
+    setInoculantName(item.name);
+    setInoculantSpecies(item.species);
+    setInoculantType(classifyInoculantSpecies(item.species));
+    setInoculantOpen(false);
+  }
 
   function updateMaterial(idx, next) {
     setMaterials((prev) => prev.map((m, i) => (i === idx ? next : m)));
@@ -1008,11 +1055,11 @@ export function CheckScreen({ prefill, onBack, onResult }) {
   async function handleCheck() {
     const valid = materials.filter((m) => m.name.trim() && m.appliedDate);
     if (valid.length === 0) {
-      alert("최근에 살포한 약제·비료를 이름과 날짜로 1건 이상 입력해주세요.");
+      alert("최근에 살포한 농자재(농약, 비료 등)를 이름과 날짜로 1건 이상 입력해주세요.");
       return;
     }
     setChecking(true);
-    const data = await fetchSpraySequence({ inoculantName, inoculantType, inoculantDate, materials: valid });
+    const data = await fetchSpraySequence({ inoculantName, inoculantSpecies, inoculantType, inoculantDate, materials: valid });
     setChecking(false);
     onResult(data);
   }
@@ -1030,7 +1077,7 @@ export function CheckScreen({ prefill, onBack, onResult }) {
         <Reveal>
           <h2 className="text-xl font-bold text-stone-900 mb-1">언제 미생물제를 뿌리면 안전할까요?</h2>
           <p className="text-sm text-stone-500 mb-6">
-            최근에 뿌린 약제·비료와 날짜를 알려주시면, 미생물이 죽지 않는 안전한 살포 시기를 계산해드려요.
+            최근에 뿌린 농자재(농약, 비료 등)와 날짜를 알려주시면, 미생물이 죽지 않는 안전한 살포 시기를 계산해드려요.
           </p>
         </Reveal>
 
@@ -1038,12 +1085,34 @@ export function CheckScreen({ prefill, onBack, onResult }) {
         <Reveal delay={60}>
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 mb-3.5">
             <label className="block text-sm font-semibold text-stone-700 mb-2">뿌리려는 미생물 / 제품명</label>
-            <input
-              value={inoculantName}
-              onChange={(e) => setInoculantName(e.target.value)}
-              placeholder="예: 트리코더마, Bacillus subtilis, OO미생물제"
-              className="w-full rounded-md border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-            />
+            <div ref={inoculantWrapRef} className="relative">
+              <input
+                value={inoculantName}
+                onChange={handleInoculantNameChange}
+                placeholder="예: 트리코더마, Bacillus subtilis, OO미생물제"
+                autoComplete="off"
+                className="w-full rounded-md border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+              />
+              {inoculantSearching && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg text-center text-xs text-stone-500 py-2.5 z-20">
+                  검색 중...
+                </div>
+              )}
+              {inoculantOpen && !inoculantSearching && inoculantResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-52 overflow-y-auto z-20">
+                  {inoculantResults.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => pickInoculant(item)}
+                      className="px-3 py-2 cursor-pointer border-b border-stone-100 last:border-0 hover:bg-emerald-50"
+                    >
+                      <div className="text-sm font-semibold text-stone-800">{item.name}</div>
+                      {item.name !== item.species && <div className="text-xs text-stone-500 italic">{item.species}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <p className="mt-2 text-xs font-semibold text-stone-500 mb-1.5">이 미생물제는 어떤 종류인가요?</p>
             <div className="grid grid-cols-3 gap-2">
               {TYPE_OPTS.map((t) => (
@@ -1077,9 +1146,9 @@ export function CheckScreen({ prefill, onBack, onResult }) {
           </div>
         </Reveal>
 
-        {/* 최근 살포한 약제·비료 */}
+        {/* 최근 살포한 농자재(농약·비료 등) */}
         <div className="mb-2 flex items-center justify-between">
-          <label className="text-sm font-semibold text-stone-700">최근에 뿌린 약제·비료</label>
+          <label className="text-sm font-semibold text-stone-700">최근에 뿌린 농자재(농약, 비료 등)</label>
           <button onClick={addMaterial} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
             + 자재 추가
           </button>

@@ -247,6 +247,7 @@ function searchTopChunks(queryVector, topK) {
 const MICROBE_DISCLOSURE_PATH = path.join(__dirname, "microbe_disclosure.csv");
 let disclosureByKey = new Map(); // "genus species" -> { displayName, vendors: [...] }
 let disclosureEpithetIndex = new Map(); // species epithet -> Set("genus species")
+let microbeSearchList = []; // [{ name, species }] — 살포확인 화면 "미생물/제품명" 자동완성용
 let disclosureGenusIndex = new Map(); // genus -> Set("genus species")
 
 const SPECIES_TYPO_FIX = {
@@ -468,9 +469,19 @@ function loadMicrobeDisclosure() {
             }
             if (!disclosureGenusIndex.has(genus)) disclosureGenusIndex.set(genus, new Set());
             disclosureGenusIndex.get(genus).add(key);
+
+            // 자동완성용: 학명 자체 + 상표명(제품명) 둘 다 검색되게 등록. species는 항상
+            // 정규화된 학명 표기를 들고 있어, 사용자가 제품명으로 고르더라도 균종 자동판정 가능.
+            const displayName = toDisplayName(key);
+            if (!microbeSearchList.some((e) => e.name === displayName && e.species === displayName)) {
+                microbeSearchList.push({ name: displayName, species: displayName });
+            }
+            if (vendor.product) {
+                microbeSearchList.push({ name: vendor.product, species: displayName });
+            }
         }
     }
-    console.log(`🏪 미생물 공시현황 판매처 정보 로드 완료: ${disclosureByKey.size}종 / 원본 ${rows.length}건`);
+    console.log(`🏪 미생물 공시현황 판매처 정보 로드 완료: ${disclosureByKey.size}종 / 원본 ${rows.length}건 / 검색 항목 ${microbeSearchList.length}건`);
 }
 
 // 추천 후보로 줄 학명 목록(닫힌집합). 토양추천에는 토양개량/생장촉진 기능 종만 쓰고,
@@ -1133,6 +1144,34 @@ app.get("/api/sprayMaterials", rateLimit, (req, res) => {
         if (seen.has(e.name)) continue; // 같은 이름 중복 제거
         seen.add(e.name);
         out.push({ name: e.name, type: e.type, family: e.family });
+        if (out.length >= limit) break;
+    }
+    res.json(out);
+});
+
+// ── 뿌릴 미생물/제품명 자동완성 ──────────────────────────────────
+// GET /api/microbeProducts?q=검색어&limit=10
+// 공시현황의 학명 + 상표명(제품명)에서 q 포함 항목을 앞글자 우선으로 정렬해 반환.
+// species는 항상 정규화된 학명이라, 제품명으로 골라도 세균제/곰팡이제 자동판정에 쓸 수 있음.
+app.get("/api/microbeProducts", rateLimit, (req, res) => {
+    const q = (req.query.q || "").trim();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 30);
+    if (!q) return res.json([]);
+
+    const ql = q.toLowerCase();
+    const starts = [];
+    const contains = [];
+    for (const e of microbeSearchList) {
+        const idx = e.name.toLowerCase().indexOf(ql);
+        if (idx === 0) starts.push(e);
+        else if (idx > 0) contains.push(e);
+    }
+    const seen = new Set();
+    const out = [];
+    for (const e of starts.concat(contains)) {
+        if (seen.has(e.name)) continue;
+        seen.add(e.name);
+        out.push({ name: e.name, species: e.species });
         if (out.length >= limit) break;
     }
     res.json(out);

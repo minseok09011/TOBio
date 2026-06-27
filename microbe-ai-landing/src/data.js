@@ -214,6 +214,22 @@ export async function fetchRecommend(crop, address) {
 }
 
 /* ── 살포 확인 (spray sequence) ───────────────────────────── */
+
+// 상표명 검색으로 못 찾을 때(비료·소독제 등 제품DB가 없는 자재) 직접 고르는 종류.
+// ⚠️ 백엔드 server.js의 SPRAY_TYPE_RULES 사본 — family 표기 그대로 가져옴.
+export const SPRAY_TYPE_OPTIONS = [
+  { key: "fert_nitrogen", label: "질소·칼리·복합비료" },
+  { key: "fert_lime", label: "석회·규산·고토" },
+  { key: "fert_rawmanure", label: "미부숙 가축분" },
+  { key: "fert_compost", label: "완숙퇴비·유기질·미생물" },
+  { key: "fert_nutrient", label: "영양제·미량요소" },
+  { key: "fert_cyanamide", label: "석회질소" },
+  { key: "disinf_oxidizer", label: "산화제계(과산화수소·과산화초산)" },
+  { key: "disinf_chlorine", label: "염소계(차아염소산·이산화염소)" },
+  { key: "microbe", label: "미생물 약제" },
+  { key: "none", label: "없음" },
+];
+
 // 자재 자동완성: [{ name, type, family }]
 export async function searchSprayMaterials(q) {
   if (!q || q.trim().length < 1) return [];
@@ -227,6 +243,23 @@ export async function searchSprayMaterials(q) {
     return Array.isArray(json) ? json : [];
   } catch (e) {
     console.warn("[TOBio] 자재 검색 실패:", e.message);
+    return [];
+  }
+}
+
+// "뿌리려는 미생물/제품명" 자동완성 — 학명 + 상표명(제품명) 둘 다 검색됨
+export async function searchMicrobeProducts(q) {
+  if (!q || q.trim().length < 1) return [];
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/microbeProducts?q=${encodeURIComponent(q.trim())}&limit=10`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    return Array.isArray(json) ? json : [];
+  } catch (e) {
+    console.warn("[TOBio] 미생물/제품명 검색 실패:", e.message);
     return [];
   }
 }
@@ -262,8 +295,10 @@ export function classifyInoculantSpecies(speciesName) {
   return "both";
 }
 
-// payload: { inoculantName, inoculantType, inoculantDate, materials:[{name,kind,appliedDate}] }
-export async function fetchSpraySequence({ inoculantName, inoculantType, inoculantDate, materials }) {
+// payload: { inoculantName, inoculantSpecies?, inoculantType, inoculantDate, materials:[{name,kind,appliedDate}] }
+// inoculantSpecies: 자동완성에서 고른 학명(제품명을 골랐어도 그 제품의 실제 학명) — 있으면 이걸로
+// 백엔드가 세균/곰팡이 자동판정. 없으면 inoculantName 자체가 학명처럼 보일 때만 폴백 사용.
+export async function fetchSpraySequence({ inoculantName, inoculantSpecies, inoculantType, inoculantDate, materials }) {
   const body = {
     materials: (materials || [])
       .filter((m) => (m.name || "").trim() && (m.appliedDate || "").trim())
@@ -271,7 +306,8 @@ export async function fetchSpraySequence({ inoculantName, inoculantType, inocula
     inoculantType: inoculantType || "both",
     inoculantDate: inoculantDate || undefined,
   };
-  if (looksLikeSpecies(inoculantName)) body.inoculantSpecies = inoculantName.trim();
+  const species = inoculantSpecies || (looksLikeSpecies(inoculantName) ? inoculantName.trim() : "");
+  if (species) body.inoculantSpecies = species;
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/spraySequence`, {
