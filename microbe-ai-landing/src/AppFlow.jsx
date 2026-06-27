@@ -1,19 +1,39 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowLeft, MapPin, X, AlertTriangle } from "lucide-react";
+import {
+  ArrowLeft,
+  MapPin,
+  X,
+  AlertTriangle,
+  CheckCircle2,
+  ShieldQuestion,
+  Info,
+  Phone,
+  ShoppingCart,
+  Crown,
+  Tag,
+} from "lucide-react";
 import { CROPS, LOAD_STEPS, delay, searchAddress, fetchRecommend, searchSprayMaterials, fetchSpraySequence } from "./data.js";
 import SaveRecordButton from "./SaveRecordButton.jsx";
+import { listMyRecentAddresses } from "./records.js";
+import { Reveal } from "./LandingPage.jsx";
 
 export function TopBar({ title, onBack, backLabel }) {
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-3 bg-white/95 backdrop-blur-sm border-b border-stone-200 px-5 py-4">
-      <button onClick={onBack} className="flex items-center gap-1 text-emerald-700 -ml-1 px-1">
+    <div className="sticky top-0 z-10 flex items-center gap-2 bg-white/95 backdrop-blur-sm border-b border-stone-200 px-5 py-3.5">
+      <button onClick={onBack} className="flex items-center gap-1 text-stone-500 hover:text-emerald-700 -ml-1 px-1 transition-colors">
         <ArrowLeft className="h-5 w-5" />
         {backLabel && <span className="text-sm font-semibold">{backLabel}</span>}
       </button>
-      <span className="font-bold text-emerald-800">{title}</span>
+      <img src="img/tobio.png" alt="" className="h-6 w-auto object-contain ml-1" />
+      <span className="font-bold text-stone-900">{title}</span>
     </div>
   );
 }
+
+const PRIMARY_BTN =
+  "inline-flex items-center justify-center gap-2 w-full rounded-md bg-amber-500 hover:bg-amber-400 disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed text-black font-semibold py-3.5 transition-colors";
+const SECONDARY_BTN =
+  "inline-flex items-center justify-center gap-2 rounded-md border-2 border-emerald-700 text-emerald-700 font-semibold hover:bg-emerald-50 transition-colors";
 
 export function StepDots({ step, total = 2 }) {
   return (
@@ -39,29 +59,31 @@ export function CropSelect({ crop, onSelect, onBack, onNext }) {
       <TopBar title="미생물 추천받기" onBack={onBack} />
       <StepDots step={0} />
       <div className="flex-1 max-w-lg w-full mx-auto px-5 py-6">
-        <h2 className="text-xl font-bold text-emerald-800 mb-1">어떤 작물을 재배하시나요?</h2>
-        <p className="text-sm text-stone-500 mb-6">작물을 선택하면 맞춤 미생물을 찾아드려요</p>
+        <Reveal>
+          <h2 className="text-xl font-bold text-stone-900 mb-1">어떤 작물을 재배하시나요?</h2>
+          <p className="text-sm text-stone-500 mb-6">작물을 선택하면 맞춤 미생물을 찾아드려요</p>
+        </Reveal>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-8">
-          {CROPS.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onSelect(c.id)}
-              className={`rounded-xl border-2 py-4 px-2 text-center transition-colors ${
-                crop === c.id ? "border-emerald-600 bg-emerald-50" : "border-stone-200 bg-white hover:border-emerald-300"
-              }`}
-            >
-              <div className="text-2xl mb-1">{c.icon}</div>
-              <div className="text-xs font-semibold text-stone-700">{c.name}</div>
-            </button>
-          ))}
-        </div>
+        <Reveal delay={80}>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-8">
+            {CROPS.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => onSelect(c.id)}
+                className={`rounded-xl border-2 py-4 px-2 text-center transition-all ${
+                  crop === c.id
+                    ? "border-emerald-600 bg-emerald-50 -translate-y-0.5 shadow-sm"
+                    : "border-stone-200 bg-white hover:border-emerald-300"
+                }`}
+              >
+                <div className="text-2xl mb-1">{c.icon}</div>
+                <div className="text-xs font-semibold text-stone-700">{c.name}</div>
+              </button>
+            ))}
+          </div>
+        </Reveal>
 
-        <button
-          disabled={!crop}
-          onClick={onNext}
-          className="w-full rounded-md bg-emerald-700 disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-semibold py-3.5 transition-colors hover:bg-emerald-800"
-        >
+        <button disabled={!crop} onClick={onNext} className={PRIMARY_BTN}>
           다음
         </button>
       </div>
@@ -72,11 +94,12 @@ export function CropSelect({ crop, onSelect, onBack, onNext }) {
 /* ──────────────────────────────────────────────────────────────
    STEP 2: 주소 입력
 ────────────────────────────────────────────────────────────── */
-export function AddressInput({ address, onSelect, onBack, onNext }) {
+export function AddressInput({ address, onSelect, onBack, onNext, user }) {
   const [query, setQuery] = useState(address?.address || "");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [recentAddresses, setRecentAddresses] = useState([]);
   const timerRef = useRef(null);
   const wrapRef = useRef(null);
 
@@ -87,6 +110,22 @@ export function AddressInput({ address, onSelect, onBack, onNext }) {
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setRecentAddresses([]);
+      return;
+    }
+    listMyRecentAddresses()
+      .then(setRecentAddresses)
+      .catch(() => setRecentAddresses([]));
+  }, [user]);
+
+  function pickRecent(addr) {
+    setQuery(addr.address);
+    onSelect({ address: addr.address });
+    setShowDropdown(false);
+  }
 
   function handleInput(e) {
     const q = e.target.value;
@@ -122,9 +161,29 @@ export function AddressInput({ address, onSelect, onBack, onNext }) {
       <TopBar title="미생물 추천받기" onBack={onBack} />
       <StepDots step={1} />
       <div className="flex-1 max-w-lg w-full mx-auto px-5 py-6">
-        <h2 className="text-xl font-bold text-emerald-800 mb-1">농경지 주소를 알려주세요</h2>
-        <p className="text-sm text-stone-500 mb-6">주소를 입력하면 팜맵에서 실제 농경지를 확인해드려요</p>
+        <Reveal>
+          <h2 className="text-xl font-bold text-stone-900 mb-1">농경지 주소를 알려주세요</h2>
+          <p className="text-sm text-stone-500 mb-6">주소를 입력하면 팜맵에서 실제 농경지를 확인해드려요</p>
+        </Reveal>
 
+        {recentAddresses.length > 0 && !address && (
+          <Reveal>
+            <p className="text-xs font-semibold text-stone-500 mb-2">📍 최근에 사용한 주소</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {recentAddresses.map((a, i) => (
+                <button
+                  key={i}
+                  onClick={() => pickRecent(a)}
+                  className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:border-emerald-500 hover:text-emerald-700 transition-colors"
+                >
+                  {a.address}
+                </button>
+              ))}
+            </div>
+          </Reveal>
+        )}
+
+        <label className="block text-sm font-semibold text-stone-700 mb-2">도로명 주소를 입력하세요</label>
         <div ref={wrapRef} className="relative mb-4">
           <input
             value={query}
@@ -175,11 +234,7 @@ export function AddressInput({ address, onSelect, onBack, onNext }) {
           </div>
         )}
 
-        <button
-          disabled={!address}
-          onClick={onNext}
-          className="w-full rounded-md bg-emerald-700 disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-semibold py-3.5 mt-2 transition-colors hover:bg-emerald-800"
-        >
+        <button disabled={!address} onClick={onNext} className={`${PRIMARY_BTN} mt-2`}>
           🌱 추천받기
         </button>
       </div>
@@ -248,7 +303,7 @@ export function LoadingScreen({ crop, address, onDone }) {
         }
       `}</style>
 
-      <h2 className="text-lg font-bold text-emerald-800 mb-1">토비오가 분석하고 있습니다</h2>
+      <h2 className="text-lg font-bold text-stone-900 mb-1">토비오가 분석하고 있습니다</h2>
       <p className="text-sm text-stone-500 mb-6">
         {cropMeta ? `${cropMeta.icon} ${cropMeta.name} 밭을 위한 미생물을 찾고 있어요...` : "잠시만 기다려 주세요..."}
       </p>
@@ -295,6 +350,7 @@ export function LoadingScreen({ crop, address, onDone }) {
    결과 화면
 ────────────────────────────────────────────────────────────── */
 export function ResultScreen({ result, crop, address, onCheck, onHome }) {
+  const [showAll, setShowAll] = useState(false);
   const cropName = CROPS.find((c) => c.id === crop)?.name || crop || "";
   const addrName = address?.address || address?.roadAddr || address?.jibunAddr || "입력 주소";
 
@@ -304,12 +360,9 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
         <TopBar title="추천 결과" onBack={onHome} backLabel="홈" />
         <div className="flex-1 max-w-lg w-full mx-auto px-5 py-12 text-center">
           <AlertTriangle className="h-12 w-12 text-rose-500 mx-auto mb-3" />
-          <h3 className="font-bold text-rose-600 mb-2">추천을 가져오지 못했습니다</h3>
+          <h3 className="font-bold text-stone-900 mb-2">추천을 가져오지 못했습니다</h3>
           <p className="text-sm text-stone-500 mb-6">{result?.error || "네트워크 오류가 발생했습니다."}</p>
-          <button
-            onClick={onHome}
-            className="rounded-md border-2 border-emerald-700 text-emerald-700 font-semibold px-7 py-3 hover:bg-emerald-50"
-          >
+          <button onClick={onHome} className={`${SECONDARY_BTN} px-7 py-3`}>
             홈으로
           </button>
         </div>
@@ -326,43 +379,55 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
     <div className="min-h-screen bg-stone-50 flex flex-col">
       <TopBar title="추천 결과" onBack={onHome} backLabel="홈" />
       <div className="flex-1 max-w-lg w-full mx-auto px-5 py-6">
-        <div className="rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-600 text-white p-5 mb-5">
-          <h2 className="font-bold text-lg mb-1">🌱 토비오의 미생물 추천</h2>
-          <p className="text-sm text-white/85">
-            작물: {cropName} &nbsp;|&nbsp; 농경지: {addrName}
-          </p>
-          {result.landUseType && (
-            <p className="text-xs text-white/70 mt-1">✅ 확인된 농경지: {result.landUseType}</p>
-          )}
-        </div>
+        <Reveal>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-600 text-white p-5 mb-5">
+            <img
+              src="img/tobio.png"
+              alt=""
+              className="absolute -right-4 -bottom-6 h-28 w-auto object-contain opacity-90"
+            />
+            <div className="relative">
+              <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white/80 mb-2">
+                AI Recommendation
+              </span>
+              <h2 className="font-bold text-lg mb-1">토비오의 미생물 추천</h2>
+              <p className="text-sm text-white/85">
+                작물: {cropName} &nbsp;|&nbsp; 농경지: {addrName}
+              </p>
+              {result.landUseType && (
+                <p className="text-xs text-white/70 mt-1">✅ 확인된 농경지: {result.landUseType}</p>
+              )}
+            </div>
+          </div>
+        </Reveal>
 
         {/* 토양 데이터 출처 안내 (백엔드 soilDataSource) */}
         {result.soilDataSource === "전국 평균값" && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-3 text-xs text-amber-800 leading-relaxed">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-3 text-xs text-amber-800 leading-relaxed">
             ℹ️ 이 주소의 실측·지역 토양 데이터가 없어 <strong>전국 평균값</strong>으로 추천했어요. 정확한 농경지 지번 주소를 입력하면 실측값 기준으로 더 정확해집니다.
           </div>
         )}
         {result.soilDataSource === "지역 추정값" && (
-          <div className="bg-stone-100 rounded-xl p-3.5 mb-3 text-xs text-stone-600 leading-relaxed">
+          <div className="bg-stone-100 rounded-2xl p-3.5 mb-3 text-xs text-stone-600 leading-relaxed">
             📊 이 농경지의 실측 기록이 없어, <strong>해당 지역(법정동) 토양 통계</strong>로 추정한 값을 기준으로 추천했어요.
           </div>
         )}
         {result.soilDataSource === "실측값" && (
-          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3.5 mb-3 text-xs text-emerald-800 leading-relaxed">
+          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5 mb-3 text-xs text-emerald-800 leading-relaxed">
             🛰️ 이 농경지의 <strong>실측 토양검정 데이터</strong>를 기준으로 추천했어요.
           </div>
         )}
 
         {/* AI 무료 사용량 한도 (백엔드 quotaExceeded) */}
         {result.quotaExceeded && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-3 text-xs text-amber-800 leading-relaxed">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-3 text-xs text-amber-800 leading-relaxed">
             ⚠️ 현재 AI 무료 사용량 한도에 도달해 추천 균종 목록이 비어 있을 수 있어요. 잠시 후 다시 시도해주세요.
           </div>
         )}
 
         <div className="space-y-3.5 mb-5">
           {microbes.length === 0 && !result.quotaExceeded && <p className="text-center text-stone-500 py-5">추천 결과가 없습니다.</p>}
-          {microbes.map((m, i) => {
+          {(showAll ? microbes : microbes.slice(0, 3)).map((m, i) => {
             const species = m.species || m.name || m.korName || m.korean_name || "미생물명";
             const vendor = m.vendorInfo;
             const tags = m.tags || m.effects || [];
@@ -371,104 +436,178 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
                 ? `${vendor.priceMin?.toLocaleString() ?? "-"}원 ~ ${vendor.priceMax?.toLocaleString() ?? "-"}원`
                 : null;
             const vendors = vendor?.vendors || m.sellers || m.products || [];
+            const isTop = i === 0;
             return (
-              <div key={i} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <span className="inline-block bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5">
-                  👍 추천 {i + 1}위
-                </span>
-                <div className="p-4">
-                  <div className="font-bold text-emerald-800 italic mb-2">{species}</div>
-                  {vendor?.matchType === "epithet" && vendor?.matchedName && (
-                    <p className="text-xs text-amber-700 bg-amber-50 rounded-md px-2.5 py-1.5 mb-2 leading-relaxed">
-                      ⚠️ &quot;{species}&quot;와 표기가 달라, 같은 균종으로 보이는 &quot;{vendor.matchedName}&quot; 제품을 보여드려요.
-                    </p>
-                  )}
-                  {vendor?.matchType === "genus" && vendor?.matchedName && (
-                    <p className="text-xs text-amber-700 bg-amber-50 rounded-md px-2.5 py-1.5 mb-2 leading-relaxed">
-                      ⚠️ &quot;{species}&quot;와 정확히 일치하는 제품은 없어, 같은 속(genus)인 &quot;{vendor.matchedName}&quot; 계열 제품을 모아 보여드려요.
-                    </p>
-                  )}
-                  {(m.description || m.reason || m.effect) && (
-                    <p className="text-sm text-stone-700 leading-relaxed mb-2">
-                      {m.description || m.reason || m.effect}
-                    </p>
-                  )}
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {tags.map((t, ti) => (
+              <Reveal key={i} delay={i * 80}>
+                <div
+                  className={`bg-white rounded-2xl overflow-hidden ${
+                    isTop ? "border-2 border-amber-400 shadow-md" : "border border-stone-200 shadow-sm"
+                  }`}
+                >
+                  <div className={`flex items-center gap-1.5 px-4 py-2.5 ${isTop ? "bg-amber-400" : "bg-emerald-700"}`}>
+                    {isTop ? (
+                      <>
+                        <Crown className="h-4 w-4 text-black" strokeWidth={2.5} />
+                        <span className="text-sm font-bold text-black">토비오의 최고 추천</span>
+                      </>
+                    ) : (
+                      <span className="text-xs font-bold text-white">👍 추천 {i + 1}위</span>
+                    )}
+                  </div>
+
+                  <div className="p-5">
+                    <div className="font-bold text-xl text-stone-900 italic">{species}</div>
+
+                    {vendor && (
+                      <div className="flex flex-wrap items-center gap-2 mt-2.5 mb-3.5">
                         <span
-                          key={ti}
-                          className="bg-emerald-50 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full"
+                          className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-full ${
+                            vendor.registered ? "bg-emerald-600 text-white" : "bg-stone-200 text-stone-600"
+                          }`}
                         >
-                          {t}
+                          {vendor.registered ? (
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          ) : (
+                            <ShieldQuestion className="h-3.5 w-3.5" />
+                          )}
+                          {vendor.registered ? "농약/비료 등록됨" : "미등록 제품"}
                         </span>
-                      ))}
-                    </div>
-                  )}
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+                          등록 제품 {vendor.productCount ?? 0}개
+                        </span>
+                      </div>
+                    )}
 
-                  {vendor && (
-                    <div className="grid grid-cols-3 gap-2 mt-1 text-center">
-                      <div className="bg-stone-50 rounded-md py-2">
-                        <p className="text-[11px] text-stone-400">가격대</p>
-                        <p className="text-xs font-semibold text-stone-800">{priceRange || "정보 없음"}</p>
+                    {vendor?.matchType === "epithet" && vendor?.matchedName && (
+                      <div className="flex items-start gap-2 rounded-xl bg-sky-50 text-sky-800 text-xs px-3 py-2.5 mb-3.5 leading-relaxed">
+                        <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                        <span>
+                          &quot;{species}&quot;와 표기가 달라, 같은 균종으로 보이는 &quot;{vendor.matchedName}&quot; 제품을 보여드려요.
+                        </span>
                       </div>
-                      <div className="bg-stone-50 rounded-md py-2">
-                        <p className="text-[11px] text-stone-400">등록 제품 수</p>
-                        <p className="text-xs font-semibold text-stone-800">{vendor.productCount ?? 0}개</p>
+                    )}
+                    {vendor?.matchType === "genus" && vendor?.matchedName && (
+                      <div className="flex items-start gap-2 rounded-xl bg-sky-50 text-sky-800 text-xs px-3 py-2.5 mb-3.5 leading-relaxed">
+                        <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                        <span>
+                          &quot;{species}&quot;와 정확히 일치하는 제품은 없어, 같은 속(genus)인 &quot;{vendor.matchedName}&quot; 계열 제품을 모아 보여드려요.
+                        </span>
                       </div>
-                      <div className="bg-stone-50 rounded-md py-2">
-                        <p className="text-[11px] text-stone-400">농약/비료 등록</p>
-                        <p className={`text-xs font-semibold ${vendor.registered ? "text-emerald-700" : "text-stone-400"}`}>
-                          {vendor.registered ? "등록됨" : "미등록"}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {vendors.length > 0 && (
-                    <div className="mt-3">
-                      <h5 className="text-xs font-bold text-stone-500 mb-2">
-                        🛒 구매 가능 판매처 ({vendors.length}곳)
-                      </h5>
-                      {vendors.map((v, vi) => {
-                        const products = v.products || [
-                          { product: v.productName || v.name, price: v.price, contact: v.phone, onlineUrl: v.onlineUrl },
-                        ];
-                        const productLabel = products[0]?.product
-                          ? `${products[0].product}${products.length > 1 ? ` 외 ${products.length - 1}개` : ""}`
-                          : "";
-                        const priceLabel = products.map((p) => p.price).filter(Boolean).join(", ");
-                        const hasOnline = products.some((p) => p.onlineUrl);
-                        return (
-                          <div key={vi} className="bg-stone-50 rounded-md px-3 py-2 mb-1.5 text-xs">
-                            <strong className="text-emerald-800">{v.company || v.seller || ""}</strong>
-                            {productLabel && <div className="text-stone-600 mt-0.5">{productLabel}</div>}
-                            {priceLabel && <div className="text-stone-500">{priceLabel}</div>}
-                            <div className="mt-0.5 flex items-center gap-2">
-                              {products[0]?.contact && <span>📞 {products[0].contact}</span>}
-                              {hasOnline && <span>🛒 온라인 구매</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                    {(m.description || m.reason || m.effect) && (
+                      <p className="text-sm text-stone-700 leading-relaxed mb-3.5">
+                        {m.description || m.reason || m.effect}
+                      </p>
+                    )}
+
+                    {tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-3.5">
+                        {tags.map((t, ti) => (
+                          <span
+                            key={ti}
+                            className="bg-emerald-50 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {priceRange && (
+                      <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 mb-3.5">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-500">
+                          <Tag className="h-3.5 w-3.5" />
+                          예상 가격대
+                        </span>
+                        <span className="text-base font-bold text-stone-900">{priceRange}</span>
+                      </div>
+                    )}
+
+                    {vendors.length > 0 && (
+                      <div>
+                        <h5 className="text-xs font-bold text-stone-500 mb-2">
+                          🛒 구매 가능 판매처 ({vendors.length}곳)
+                        </h5>
+                        <div className="space-y-2">
+                          {vendors.map((v, vi) => {
+                            const products = v.products || [
+                              { product: v.productName || v.name, price: v.price, contact: v.phone, onlineUrl: v.onlineUrl },
+                            ];
+                            const productLabel = products[0]?.product
+                              ? `${products[0].product}${products.length > 1 ? ` 외 ${products.length - 1}개` : ""}`
+                              : "";
+                            const priceLabel = products.map((p) => p.price).filter(Boolean).join(", ");
+                            const onlineUrl = products.find((p) => p.onlineUrl)?.onlineUrl;
+                            const contact = products[0]?.contact;
+                            return (
+                              <div
+                                key={vi}
+                                className={`rounded-xl border-l-4 ${
+                                  isTop ? "border-l-amber-400" : "border-l-emerald-600"
+                                } border-y border-r border-stone-200 bg-stone-50 px-3.5 py-3 text-xs`}
+                              >
+                                <strong className="text-sm text-stone-900">{v.company || v.seller || ""}</strong>
+                                {productLabel && <div className="text-stone-600 mt-1">{productLabel}</div>}
+                                {priceLabel && <div className="text-stone-500 mt-0.5">{priceLabel}</div>}
+                                {(contact || onlineUrl) && (
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    {contact && (
+                                      <a
+                                        href={`tel:${contact.replace(/[^0-9]/g, "")}`}
+                                        className="inline-flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2 py-1 text-stone-700 hover:border-emerald-400"
+                                      >
+                                        <Phone className="h-3 w-3" />
+                                        {contact}
+                                      </a>
+                                    )}
+                                    {onlineUrl && (
+                                      <a
+                                        href={onlineUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1 rounded-md bg-emerald-700 px-2 py-1 text-white hover:bg-emerald-800"
+                                      >
+                                        <ShoppingCart className="h-3 w-3" />
+                                        온라인 구매
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </Reveal>
             );
           })}
         </div>
 
+        {!showAll && microbes.length > 3 && (
+          <button
+            onClick={() => setShowAll(true)}
+            className={`${SECONDARY_BTN} w-full py-2.5 mb-5 -mt-1.5`}
+          >
+            추천 {microbes.length}개 모두 보기 (상세보기)
+          </button>
+        )}
+
         {explanation && (
-          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-3 text-sm text-emerald-900 leading-relaxed">
-            🔬 {explanation}
-          </div>
+          <Reveal>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-3 text-sm text-emerald-900 leading-relaxed">
+              🔬 {explanation}
+            </div>
+          </Reveal>
         )}
 
         {/* 논문 근거 더보기 (백엔드 scientificEvidence + sources) */}
         {(scientificEvidence || sources.length > 0) && (
-          <details className="bg-white rounded-xl shadow-sm p-4 mb-5">
-            <summary className="cursor-pointer text-sm font-semibold text-emerald-800 select-none">
+          <details className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 mb-5">
+            <summary className="cursor-pointer text-sm font-semibold text-stone-900 select-none">
               📄 더보기 — 논문 근거로 살펴보기
             </summary>
             {scientificEvidence && (
@@ -504,14 +643,11 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
           </details>
         )}
 
-        <div className="bg-emerald-50 rounded-xl p-4 text-center mb-3">
-          <p className="text-sm font-semibold text-emerald-800 mb-3">
+        <div className="bg-stone-100 border border-stone-200 rounded-2xl p-4 text-center mb-3">
+          <p className="text-sm font-semibold text-stone-800 mb-3">
             🧪 추천받은 미생물, 살포 가능 확인도 함께 해보시겠어요?
           </p>
-          <button
-            onClick={onCheck}
-            className="rounded-md border-2 border-emerald-700 text-emerald-700 font-semibold px-6 py-2.5 hover:bg-white"
-          >
+          <button onClick={onCheck} className={PRIMARY_BTN}>
             살포 가능 확인하기
           </button>
         </div>
@@ -532,10 +668,7 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
           />
         </div>
 
-        <button
-          onClick={onHome}
-          className="w-full rounded-md border-2 border-emerald-700 text-emerald-700 font-semibold py-3 hover:bg-emerald-50"
-        >
+        <button onClick={onHome} className={`${SECONDARY_BTN} w-full py-3`}>
           홈으로 돌아가기
         </button>
       </div>
@@ -593,7 +726,7 @@ function MaterialRow({ row, onChange, onRemove, canRemove }) {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4 mb-2.5">
+    <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 mb-2.5">
       <div className="flex items-start gap-2">
         <div ref={wrapRef} className="relative flex-1">
           <input
@@ -650,20 +783,18 @@ function MaterialRow({ row, onChange, onRemove, canRemove }) {
 
 const newMaterial = () => ({ name: "", kind: undefined, family: undefined, appliedDate: todayStr() });
 
-export function CheckScreen({ prefill, onBack }) {
+export function CheckScreen({ prefill, onBack, onResult }) {
   const [inoculantName, setInoculantName] = useState(prefill?.microbe || "");
   const [inoculantType, setInoculantType] = useState("both"); // bacteria | fungus | both
   const [inoculantDate, setInoculantDate] = useState(todayStr());
   const [materials, setMaterials] = useState([newMaterial()]);
   const [checking, setChecking] = useState(false);
-  const [result, setResult] = useState(null);
 
   useEffect(() => {
     setInoculantName(prefill?.microbe || "");
     setInoculantType("both");
     setInoculantDate(todayStr());
     setMaterials([newMaterial()]);
-    setResult(null);
   }, [prefill]);
 
   function updateMaterial(idx, next) {
@@ -683,10 +814,9 @@ export function CheckScreen({ prefill, onBack }) {
       return;
     }
     setChecking(true);
-    setResult(null);
     const data = await fetchSpraySequence({ inoculantName, inoculantType, inoculantDate, materials: valid });
-    setResult(data);
     setChecking(false);
+    onResult(data);
   }
 
   const TYPE_OPTS = [
@@ -699,51 +829,55 @@ export function CheckScreen({ prefill, onBack }) {
     <div className="min-h-screen bg-stone-50 flex flex-col">
       <TopBar title="살포 가능 확인" onBack={onBack} />
       <div className="flex-1 max-w-lg w-full mx-auto px-5 py-6">
-        <h2 className="text-xl font-bold text-emerald-800 mb-1">언제 미생물제를 뿌리면 안전할까요?</h2>
-        <p className="text-sm text-stone-500 mb-6">
-          최근에 뿌린 약제·비료와 날짜를 알려주시면, 미생물이 죽지 않는 안전한 살포 시기를 계산해드려요.
-        </p>
+        <Reveal>
+          <h2 className="text-xl font-bold text-stone-900 mb-1">언제 미생물제를 뿌리면 안전할까요?</h2>
+          <p className="text-sm text-stone-500 mb-6">
+            최근에 뿌린 약제·비료와 날짜를 알려주시면, 미생물이 죽지 않는 안전한 살포 시기를 계산해드려요.
+          </p>
+        </Reveal>
 
         {/* 뿌릴 미생물제 */}
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-3.5">
-          <label className="block text-sm font-semibold text-stone-700 mb-2">뿌리려는 미생물 / 제품명</label>
-          <input
-            value={inoculantName}
-            onChange={(e) => setInoculantName(e.target.value)}
-            placeholder="예: 트리코더마, Bacillus subtilis, OO미생물제"
-            className="w-full rounded-md border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-600"
-          />
-          <p className="mt-2 text-xs font-semibold text-stone-500 mb-1.5">이 미생물제는 어떤 종류인가요?</p>
-          <div className="grid grid-cols-3 gap-2">
-            {TYPE_OPTS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setInoculantType(t.id)}
-                className={`rounded-md border-2 py-2 text-xs font-semibold transition-colors ${
-                  inoculantType === t.id
-                    ? "border-emerald-600 bg-emerald-50 text-emerald-800"
-                    : "border-stone-200 text-stone-600 hover:border-emerald-300"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+        <Reveal delay={60}>
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 mb-3.5">
+            <label className="block text-sm font-semibold text-stone-700 mb-2">뿌리려는 미생물 / 제품명</label>
+            <input
+              value={inoculantName}
+              onChange={(e) => setInoculantName(e.target.value)}
+              placeholder="예: 트리코더마, Bacillus subtilis, OO미생물제"
+              className="w-full rounded-md border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+            />
+            <p className="mt-2 text-xs font-semibold text-stone-500 mb-1.5">이 미생물제는 어떤 종류인가요?</p>
+            <div className="grid grid-cols-3 gap-2">
+              {TYPE_OPTS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setInoculantType(t.id)}
+                  className={`rounded-md border-2 py-2 text-xs font-semibold transition-all ${
+                    inoculantType === t.id
+                      ? "border-emerald-600 bg-emerald-50 text-emerald-800 -translate-y-0.5 shadow-sm"
+                      : "border-stone-200 text-stone-600 hover:border-emerald-300"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-stone-400">
+              학명(예: Trichoderma harzianum)을 입력하면 종류를 자동으로 판정합니다. 모르면 &apos;잘 모름&apos;을 고르면 더 안전하게(보수적으로) 계산해요.
+            </p>
           </div>
-          <p className="mt-2 text-[11px] text-stone-400">
-            학명(예: Trichoderma harzianum)을 입력하면 종류를 자동으로 판정합니다. 모르면 &apos;잘 모름&apos;을 고르면 더 안전하게(보수적으로) 계산해요.
-          </p>
-        </div>
 
-        {/* 살포 예정일 */}
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-3.5">
-          <label className="block text-sm font-semibold text-stone-700 mb-2">미생물제 살포 예정일</label>
-          <input
-            type="date"
-            value={inoculantDate}
-            onChange={(e) => setInoculantDate(e.target.value)}
-            className="w-full rounded-md border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-600"
-          />
-        </div>
+          {/* 살포 예정일 */}
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 mb-3.5">
+            <label className="block text-sm font-semibold text-stone-700 mb-2">미생물제 살포 예정일</label>
+            <input
+              type="date"
+              value={inoculantDate}
+              onChange={(e) => setInoculantDate(e.target.value)}
+              className="w-full rounded-md border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+            />
+          </div>
+        </Reveal>
 
         {/* 최근 살포한 약제·비료 */}
         <div className="mb-2 flex items-center justify-between">
@@ -762,27 +896,33 @@ export function CheckScreen({ prefill, onBack }) {
           />
         ))}
 
-        <button
-          onClick={handleCheck}
-          disabled={checking}
-          className="w-full rounded-md bg-emerald-700 disabled:bg-stone-300 text-white font-semibold py-3.5 mt-3 transition-colors hover:bg-emerald-800"
-        >
+        <button onClick={handleCheck} disabled={checking} className={`${PRIMARY_BTN} mt-3`}>
           {checking ? "계산 중..." : "안전 살포일 확인하기"}
         </button>
-
-        {result && <SpraySequenceResult result={result} />}
       </div>
     </div>
   );
 }
 
-/* 살포 시퀀스 결과 렌더 */
-function SpraySequenceResult({ result }) {
+/* ──────────────────────────────────────────────────────────────
+   살포 확인 결과 화면 (별도 페이지)
+────────────────────────────────────────────────────────────── */
+export function CheckResultScreen({ result, onBack }) {
+  if (!result) return null;
+
   if (result.error) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-5 mt-4 border-l-4 border-rose-500">
-        <h4 className="font-bold text-rose-600 mb-1">확인하지 못했습니다</h4>
-        <p className="text-sm text-stone-700 leading-relaxed">{result.error}</p>
+      <div className="min-h-screen bg-stone-50 flex flex-col">
+        <TopBar title="살포 확인 결과" onBack={onBack} backLabel="홈" />
+        <div className="flex-1 max-w-lg w-full mx-auto px-5 py-6">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 border-l-4 border-l-rose-500">
+            <h4 className="font-bold text-stone-900 mb-1">확인하지 못했습니다</h4>
+            <p className="text-sm text-stone-700 leading-relaxed">{result.error}</p>
+          </div>
+          <button onClick={onBack} className={`${SECONDARY_BTN} w-full py-3 mt-4`}>
+            홈으로 돌아가기
+          </button>
+        </div>
       </div>
     );
   }
@@ -791,90 +931,101 @@ function SpraySequenceResult({ result }) {
   const g = result.governingMaterial;
 
   return (
-    <div className="mt-4 space-y-3">
-      {/* 핵심 판정 */}
-      <div className={`rounded-xl p-5 ${safe ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-300"}`}>
-        <div className="text-3xl mb-1">{safe ? "🟢" : "🟡"}</div>
-        <h4 className={`font-bold mb-1 ${safe ? "text-emerald-800" : "text-amber-700"}`}>
-          {safe ? "지금 살포해도 괜찮아요" : "조금 더 기다리는 게 좋아요"}
-        </h4>
-        <p className="text-sm text-stone-700 leading-relaxed">{result.headline}</p>
-        {result.safeDate && (
-          <p className="mt-2 text-sm font-semibold text-stone-800">📅 권장 살포 가능일: {result.safeDate}</p>
-        )}
-      </div>
+    <div className="min-h-screen bg-stone-50 flex flex-col">
+      <TopBar title="살포 확인 결과" onBack={onBack} backLabel="홈" />
+      <div className="flex-1 max-w-lg w-full mx-auto px-5 py-6">
+        <Reveal>
+          <div className="space-y-3">
+            {/* 핵심 판정 */}
+            <div className={`rounded-2xl p-5 ${safe ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-300"}`}>
+              <div className="text-3xl mb-1">{safe ? "🟢" : "🟡"}</div>
+              <h4 className={`font-bold mb-1 ${safe ? "text-emerald-800" : "text-amber-700"}`}>
+                {safe ? "지금 살포해도 괜찮아요" : "조금 더 기다리는 게 좋아요"}
+              </h4>
+              <p className="text-sm text-stone-700 leading-relaxed">{result.headline}</p>
+              {result.safeDate && (
+                <p className="mt-2 text-sm font-semibold text-stone-800">📅 권장 살포 가능일: {result.safeDate}</p>
+              )}
+            </div>
 
-      {/* 발목 잡는 자재 */}
-      {g && (
-        <div className="bg-white rounded-xl shadow-sm p-4 text-sm">
-          <p className="font-semibold text-stone-700 mb-1">가장 영향이 큰 자재</p>
-          <p className="text-stone-700">
-            {g.risk} <strong>{g.name}</strong>
-            {g.family ? ` (${g.family})` : ""} — {g.appliedDate} 살포, 권장 간격 약 {g.term}일
-          </p>
-          {g.source && (
-            <a
-              href={`https://www.ncbi.nlm.nih.gov/pmc/articles/${g.source}/`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-emerald-700 underline"
-            >
-              근거 논문 보기 ({g.source})
-            </a>
-          )}
-        </div>
-      )}
-
-      {/* 자재별 내역 */}
-      {Array.isArray(result.perMaterial) && result.perMaterial.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-xs font-bold text-stone-500 mb-2">자재별 안전 해제일</p>
-          <div className="space-y-1.5">
-            {result.perMaterial.map((m, i) => (
-              <div key={i} className="flex items-center justify-between text-xs">
-                <span className="text-stone-700">
-                  {m.risk} {m.name}
-                  {m.family ? <span className="text-stone-400"> · {m.family}</span> : null}
-                </span>
-                <span className="text-stone-500">{m.clearDate} ({RISK_LABEL[m.risk] || ""}, {m.term}일)</span>
+            {/* 발목 잡는 자재 */}
+            {g && (
+              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 text-sm">
+                <p className="font-semibold text-stone-700 mb-1">가장 영향이 큰 자재</p>
+                <p className="text-stone-700">
+                  {g.risk} <strong>{g.name}</strong>
+                  {g.family ? ` (${g.family})` : ""} — {g.appliedDate} 살포, 권장 간격 약 {g.term}일
+                </p>
+                {g.source && (
+                  <a
+                    href={`https://www.ncbi.nlm.nih.gov/pmc/articles/${g.source}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-emerald-700 underline"
+                  >
+                    근거 논문 보기 ({g.source})
+                  </a>
+                )}
               </div>
-            ))}
+            )}
+
+            {/* 자재별 내역 */}
+            {Array.isArray(result.perMaterial) && result.perMaterial.length > 0 && (
+              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+                <p className="text-xs font-bold text-stone-500 mb-2">자재별 안전 해제일</p>
+                <div className="space-y-1.5">
+                  {result.perMaterial.map((m, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs">
+                      <span className="text-stone-700">
+                        {m.risk} {m.name}
+                        {m.family ? <span className="text-stone-400"> · {m.family}</span> : null}
+                      </span>
+                      <span className="text-stone-500">{m.clearDate} ({RISK_LABEL[m.risk] || ""}, {m.term}일)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 구리 누적 경고 */}
+            {result.copperWarning?.flag && (
+              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-sm text-rose-700 leading-relaxed">
+                ⚠️ {result.copperWarning.message}
+              </div>
+            )}
+
+            {/* 미확인 자재 */}
+            {Array.isArray(result.unmatchedMaterials) && result.unmatchedMaterials.length > 0 && (
+              <div className="bg-stone-100 rounded-2xl p-4 text-xs text-stone-600 leading-relaxed">
+                다음 자재는 정확한 분류를 찾지 못해 보수적으로(주의) 계산했어요: {result.unmatchedMaterials.join(", ")}.
+                정식 상표명으로 다시 입력하면 더 정확해집니다.
+              </div>
+            )}
+
+            {/* 기온 안내 + 주석 */}
+            {result.tempAdvisory && (
+              <p className="text-xs text-stone-500 leading-relaxed">🌡️ {result.tempAdvisory}</p>
+            )}
+            {result.note && <p className="text-[11px] text-stone-400 leading-relaxed">{result.note}</p>}
+
+            {/* 로그인 상태면 살포 확인 결과를 내 기록에 저장 (로그인은 선택) */}
+            <div className="pt-1">
+              <SaveRecordButton
+                build={() => ({
+                  kind: "spray",
+                  crop: "",
+                  title: result.safeDate ? `살포 권장일 ${result.safeDate}` : "살포 확인 결과",
+                  summary: result.headline || "",
+                  payload: result,
+                })}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        </Reveal>
 
-      {/* 구리 누적 경고 */}
-      {result.copperWarning?.flag && (
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700 leading-relaxed">
-          ⚠️ {result.copperWarning.message}
-        </div>
-      )}
-
-      {/* 미확인 자재 */}
-      {Array.isArray(result.unmatchedMaterials) && result.unmatchedMaterials.length > 0 && (
-        <div className="bg-stone-100 rounded-xl p-4 text-xs text-stone-600 leading-relaxed">
-          다음 자재는 정확한 분류를 찾지 못해 보수적으로(주의) 계산했어요: {result.unmatchedMaterials.join(", ")}.
-          정식 상표명으로 다시 입력하면 더 정확해집니다.
-        </div>
-      )}
-
-      {/* 기온 안내 + 주석 */}
-      {result.tempAdvisory && (
-        <p className="text-xs text-stone-500 leading-relaxed">🌡️ {result.tempAdvisory}</p>
-      )}
-      {result.note && <p className="text-[11px] text-stone-400 leading-relaxed">{result.note}</p>}
-
-      {/* 로그인 상태면 살포 확인 결과를 내 기록에 저장 (로그인은 선택) */}
-      <div className="pt-1">
-        <SaveRecordButton
-          build={() => ({
-            kind: "spray",
-            crop: "",
-            title: result.safeDate ? `살포 권장일 ${result.safeDate}` : "살포 확인 결과",
-            summary: result.headline || "",
-            payload: result,
-          })}
-        />
+        <button onClick={onBack} className={`${SECONDARY_BTN} w-full py-3 mt-4`}>
+          홈으로 돌아가기
+        </button>
       </div>
     </div>
   );

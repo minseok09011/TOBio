@@ -5,16 +5,8 @@ import {
   Sprout,
   FlaskConical,
   Microscope,
-  ShieldCheck,
   BookOpen,
   CloudSun,
-  TrendingUp,
-  MessageSquare,
-  Send,
-  Mail,
-  Phone,
-  Users,
-  Sparkles,
   Languages,
 } from "lucide-react";
 
@@ -23,7 +15,7 @@ import {
    IntersectionObserver 기반 reveal 래퍼. framer-motion 없이 Tailwind
    transition 유틸리티만으로 동일한 느낌을 낸다.
 ────────────────────────────────────────────────────────────── */
-function Reveal({ children, className = "", delay = 0, as: Tag = "div" }) {
+export function Reveal({ children, className = "", delay = 0, as: Tag = "div" }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
 
@@ -110,7 +102,7 @@ function IconBox({ icon: Icon, className = "", iconClassName = "h-6 w-6 text-whi
 ────────────────────────────────────────────────────────────── */
 function Hero({ onStartRecommend, onStartCheck, user, onLoginClick, onLogout, onMyRecords }) {
   const stats = [
-    { value: "800+", label: "A급 논문 학습" },
+    { value: "1,764편", label: "A급 논문 학습" },
     { value: "27종", label: "토양 상세 데이터 반영" },
     { value: "100%", label: "날씨 기반 살포 신호등" },
   ];
@@ -154,7 +146,7 @@ function Hero({ onStartRecommend, onStartCheck, user, onLoginClick, onLogout, on
 
         <Reveal delay={150}>
           <p className="text-white/80 text-base md:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
-            흙토람 토양 데이터와 최우선 학술 논문 800편을 학습한 AI가 당신의
+            흙토람 토양 데이터와 최우선 학술 논문 8,082편을 학습한 AI가 당신의
             농장을 위한 최적의 미생물 솔루션을 제공합니다.
           </p>
         </Reveal>
@@ -166,7 +158,7 @@ function Hero({ onStartRecommend, onStartCheck, user, onLoginClick, onLogout, on
                 <React.Fragment key={s.label}>
                   {i > 0 && <div className="w-px h-12 bg-white/30" />}
                   <div className="text-center">
-                    <p className="text-2xl md:text-3xl font-bold text-amber-400">{s.value}</p>
+                    <p className="text-xl md:text-3xl font-bold text-amber-400 whitespace-nowrap">{s.value}</p>
                     <p className="text-xs md:text-sm text-white/70">{s.label}</p>
                   </div>
                 </React.Fragment>
@@ -382,246 +374,11 @@ function CoreFeatures() {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   6. DATA DASHBOARD — 통계 + 라인차트/레이더차트 목업
-────────────────────────────────────────────────────────────── */
-function LineChartMock() {
-  // 최근 7일 토양/기온 트렌드를 흉내낸 손으로 좌표를 잡은 목업 SVG
-  const tempPts = "0,70 40,62 80,66 120,50 160,46 200,38 240,30";
-  const soilPts = "0,90 40,86 80,88 120,80 160,78 200,72 240,68";
-  return (
-    <div className="h-56 w-full">
-      <svg viewBox="0 0 240 110" className="w-full h-full">
-        {[0, 1, 2, 3].map((i) => (
-          <line key={i} x1="0" y1={20 + i * 25} x2="240" y2={20 + i * 25} stroke="#e7e5e4" strokeWidth="1" />
-        ))}
-        <polyline points={tempPts} fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" />
-        <polyline points={soilPts} fill="none" stroke="#047857" strokeWidth="2.5" strokeLinecap="round" />
-      </svg>
-    </div>
-  );
-}
-
-function RadarChartMock() {
-  // 6축 레이더 차트 목업 (적정범위 vs 내 밭 현황)
-  const center = 60;
-  const ring = (r) =>
-    [0, 60, 120, 180, 240, 300]
-      .map((deg) => {
-        const rad = (deg * Math.PI) / 180;
-        const x = center + r * Math.sin(rad);
-        const y = center - r * Math.cos(rad);
-        return `${x},${y}`;
-      })
-      .join(" ");
-
-  const labels = ["pH", "유기물", "배수", "칼슘", "질소", "인산"];
-  const labelPos = (r) =>
-    [0, 60, 120, 180, 240, 300].map((deg) => {
-      const rad = (deg * Math.PI) / 180;
-      return { x: center + r * Math.sin(rad), y: center - r * Math.cos(rad) };
-    });
-
-  return (
-    <svg viewBox="0 0 120 120" className="w-full h-56">
-      <polygon points={ring(48)} fill="none" stroke="#e7e5e4" strokeWidth="1" />
-      <polygon points={ring(32)} fill="none" stroke="#e7e5e4" strokeWidth="1" />
-      <polygon points={ring(16)} fill="none" stroke="#e7e5e4" strokeWidth="1" />
-      <polygon points={ring(40)} fill="rgba(217,119,6,0.12)" stroke="#d97706" strokeWidth="1.5" strokeDasharray="3 3" />
-      <polygon points="60,18 95,42 88,80 60,95 30,72 25,38" fill="rgba(4,120,87,0.25)" stroke="#047857" strokeWidth="2" />
-      {labelPos(56).map((p, i) => (
-        <text key={labels[i]} x={p.x} y={p.y} fontSize="7" textAnchor="middle" fill="#78716c">
-          {labels[i]}
-        </text>
-      ))}
-    </svg>
-  );
-}
-
-function DataDashboard() {
-  const stats = [
-    { icon: TrendingUp, label: "추천 미생물 매칭률", value: "98%" },
-    { icon: ShieldCheck, label: "병해 예방 예측률", value: "92%" },
-    { icon: Sparkles, label: "처방 만족도", value: "95%" },
-  ];
-
-  return (
-    <section className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <Reveal>
-            <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-6">
-              내 밭의 상태를 한눈에
-              <br />
-              파악하는 직관적인 대시보드
-            </h2>
-            <p className="text-lg text-stone-500 mb-8 leading-relaxed">
-              토비오는 토양과 기상에서 수집된 데이터를 분석해 최적의 관리
-              전략을 제안합니다. 적정 범위 대비 내 밭의 위치를 그래프로 바로
-              확인하세요.
-            </p>
-            <div className="space-y-4">
-              {stats.map((s, i) => (
-                <Reveal key={s.label} delay={i * 80}>
-                  <div className="flex items-center gap-4">
-                    <IconBox icon={s.icon} className="w-10 h-10 bg-amber-100" iconClassName="h-5 w-5 text-amber-700" />
-                    <div>
-                      <p className="text-sm text-stone-500">{s.label}</p>
-                      <p className="text-lg font-semibold text-stone-900">{s.value}</p>
-                    </div>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </Reveal>
-
-          <Reveal delay={150}>
-            <GlowCard className="p-6" glow="rgba(217,119,6,0.25)">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-stone-900">최근 7일 기온·토양 온도 트렌드</h3>
-                <span className="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold border border-stone-300">
-                  Live
-                </span>
-              </div>
-              <LineChartMock />
-              <div className="mt-2 flex items-center justify-center gap-6 text-xs text-stone-500">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-amber-600" />
-                  <span>기온 (°C)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-emerald-700" />
-                  <span>토양 온도 (°C)</span>
-                </div>
-              </div>
-
-              <div className="mt-8 border-t border-stone-200 pt-6">
-                <h3 className="text-sm font-semibold text-stone-900 mb-2 text-center">
-                  토양 화학성 적정 범위 대비 내 밭 현황
-                </h3>
-                <RadarChartMock />
-                <div className="mt-2 flex items-center justify-center gap-6 text-xs text-stone-500">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-700" />
-                    <span>내 밭 현황</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full border-2 border-amber-600 border-dashed bg-transparent" />
-                    <span>적정 범위</span>
-                  </div>
-                </div>
-              </div>
-            </GlowCard>
-          </Reveal>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────
-   9. CONTACT & FOOTER
+   9. FOOTER
 ────────────────────────────────────────────────────────────── */
 function ContactFooter() {
-  const contacts = [
-    { icon: Mail, title: "이메일 문의", sub: "일반 문의 및 기술 지원", value: "hello@tobio.kr" },
-    { icon: Phone, title: "전화 문의", sub: "평일 09:00 - 18:00", value: "1588-0000" },
-    { icon: Users, title: "제휴 문의", sub: "기업 및 단체 제휴", value: "partner@tobio.kr" },
-  ];
-
   return (
     <>
-      <section className="py-20 bg-white" id="contact">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Reveal className="text-center mb-12">
-            <span className="inline-flex items-center rounded-md bg-stone-100 text-stone-600 px-2.5 py-0.5 text-xs font-semibold mb-4">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              문의하기
-            </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">
-              궁금한 점이 있으신가요?
-            </h2>
-            <p className="text-lg text-stone-500 max-w-2xl mx-auto">
-              TOBio(토비오)에 대해 궁금한 점이나 제휴 문의가 있으시면 아래 양식을
-              통해 연락해 주세요.
-            </p>
-          </Reveal>
-
-          <div className="grid lg:grid-cols-2 gap-12 items-start">
-            <Reveal>
-              <div className="space-y-8">
-                {contacts.map((c) => (
-                  <div key={c.title} className="flex items-start gap-4">
-                    <IconBox icon={c.icon} className="w-12 h-12 bg-emerald-700/10" iconClassName="h-6 w-6 text-emerald-700" />
-                    <div>
-                      <h3 className="font-semibold text-stone-900 mb-1">{c.title}</h3>
-                      <p className="text-sm text-stone-500 mb-1">{c.sub}</p>
-                      <p className="text-sm font-medium text-stone-900">{c.value}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Reveal>
-
-            <Reveal delay={100}>
-              <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 md:p-8">
-                <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-stone-700">이름 *</label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                        placeholder="홍길동"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-stone-700">이메일 *</label>
-                      <input
-                        type="email"
-                        className="flex h-10 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                        placeholder="example@email.com"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-stone-700">연락처</label>
-                      <input
-                        type="tel"
-                        className="flex h-10 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                        placeholder="010-1234-5678"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-stone-700">문의 유형 *</label>
-                      <select className="flex h-10 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-500 focus:outline-none focus:ring-2 focus:ring-emerald-600">
-                        <option>선택해주세요</option>
-                        <option>서비스 이용 문의</option>
-                        <option>제휴 문의</option>
-                        <option>기타</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-stone-700">문의 내용 *</label>
-                    <textarea
-                      className="flex w-full min-h-[120px] resize-none rounded-md border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                      placeholder="문의하실 내용을 자세히 적어주세요."
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center justify-center gap-2 w-full rounded-md bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-4 py-3 transition-colors"
-                  >
-                    <Send className="h-4 w-4" />
-                    문의 보내기
-                  </button>
-                </form>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
       <footer className="py-12 bg-stone-100 border-t border-stone-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
@@ -676,7 +433,6 @@ export default function MicrobeAiLandingPage({ onStartRecommend, onStartCheck, u
       />
       <OurSolution />
       <CoreFeatures />
-      <DataDashboard />
       <ContactFooter />
     </div>
   );

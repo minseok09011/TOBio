@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import MicrobeAiLandingPage from "./LandingPage.jsx";
-import { CropSelect, AddressInput, LoadingScreen, ResultScreen, CheckScreen } from "./AppFlow.jsx";
+import { CropSelect, AddressInput, LoadingScreen, ResultScreen, CheckScreen, CheckResultScreen } from "./AppFlow.jsx";
 import { CROPS } from "./data.js";
 import LoginModal from "./LoginModal.jsx";
 import RecordsScreen from "./RecordsScreen.jsx";
@@ -12,6 +12,7 @@ export default function App() {
   const [address, setAddress] = useState(null);
   const [result, setResult] = useState(null);
   const [checkPrefill, setCheckPrefill] = useState({ microbe: "", crop: "" });
+  const [checkResult, setCheckResult] = useState(null);
 
   // 실제 인증 상태 (Supabase 세션). 새로고침/재방문에도 유지되며, 미설정 시 null.
   const [user, setUser] = useState(null);
@@ -73,6 +74,7 @@ export default function App() {
             onSelect={setAddress}
             onBack={() => setView("crop")}
             onNext={() => setView("loading")}
+            user={user}
           />
         );
       case "loading":
@@ -82,7 +84,18 @@ export default function App() {
           <ResultScreen result={result} crop={crop} address={address} onCheck={goToCheckFromResult} onHome={goHome} />
         );
       case "check":
-        return <CheckScreen prefill={checkPrefill} onBack={goHome} />;
+        return (
+          <CheckScreen
+            prefill={checkPrefill}
+            onBack={goHome}
+            onResult={(data) => {
+              setCheckResult(data);
+              setView("checkResult");
+            }}
+          />
+        );
+      case "checkResult":
+        return <CheckResultScreen result={checkResult} onBack={goHome} />;
       case "records":
         return <RecordsScreen onBack={goHome} />;
       default:

@@ -90,3 +90,27 @@ export async function listMyRecords() {
   if (error) throw error;
   return data || [];
 }
+
+// 로그인한 사용자가 "내 기록에 저장"한 추천 결과들에서 최근 사용한 주소를 뽑아온다.
+// (저장하지 않은 추천은 기록이 없으므로 여기 나오지 않음)
+export async function listMyRecentAddresses(limit = 5) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("records")
+    .select("payload, crop, created_at")
+    .eq("kind", "recommend")
+    .order("created_at", { ascending: false })
+    .limit(30);
+  if (error) throw error;
+
+  const seen = new Set();
+  const out = [];
+  for (const row of data || []) {
+    const addr = row.payload?.address;
+    if (!addr || seen.has(addr)) continue;
+    seen.add(addr);
+    out.push({ address: addr, crop: row.crop || "" });
+    if (out.length >= limit) break;
+  }
+  return out;
+}

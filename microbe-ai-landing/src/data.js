@@ -23,18 +23,13 @@ const API_BASE_URL =
 const KAKAO_REST_API_KEY =
   import.meta.env.VITE_KAKAO_REST_KEY || "715a0e6e29aab1838d771a4a0a775ae9";
 
-// 실패 시 가짜 데이터로 진행할지 여부.
-// 기본 false: 실패하면 화면에 실제 에러를 보여줘 "되는 척"하지 않게 한다.
-// 오프라인 데모가 필요할 때만 true 로.
-const DEMO_FALLBACK = false;
-
 export const CROPS = [
   { id: "tomato", icon: "🍅", name: "토마토" },
   { id: "pepper", icon: "🌶️", name: "고추" },
   { id: "rice", icon: "🌾", name: "벼" },
   { id: "cabbage", icon: "🥬", name: "배추" },
   { id: "potato", icon: "🥔", name: "감자" },
-  { id: "soybean", icon: "🫘", name: "대두" },
+  { id: "soybean", icon: "🥜", name: "대두" },
   { id: "corn", icon: "🌽", name: "옥수수" },
   { id: "wheat", icon: "🌿", name: "밀" },
   { id: "lettuce", icon: "🥗", name: "상추" },
@@ -129,28 +124,6 @@ function nowDateTime() {
   };
 }
 
-function dummyRecommend(crop) {
-  const cropName = CROPS.find((c) => c.id === crop)?.name || crop || "작물";
-  return {
-    _demo: true,
-    explanation: `(데모) 백엔드에 연결하지 못해 예시 데이터를 표시 중입니다. 실제 서비스에서는 ${cropName} 밭의 실측 토양·기상 데이터와 논문 근거로 추천합니다.`,
-    microbes: [
-      {
-        species: "Bacillus licheniformis",
-        vendorInfo: {
-          productCount: 10,
-          priceMin: 7000,
-          priceMax: 42000,
-          registered: true,
-          vendors: [
-            { company: "㈜남보", products: [{ product: "코마에이치액제(미생물제제)", price: "7,000원/100mL", contact: "055-762-6867" }] },
-          ],
-        },
-      },
-    ],
-  };
-}
-
 export async function fetchRecommend(crop, address) {
   try {
     // 1) 좌표/법정동코드 확보 (자동완성에서 고른 주소는 이미 있음, 아니면 지오코딩)
@@ -214,7 +187,6 @@ export async function fetchRecommend(crop, address) {
     };
   } catch (e) {
     console.warn("[TOBio] 추천 파이프라인 실패:", e.message);
-    if (DEMO_FALLBACK) return dummyRecommend(crop);
     return { error: e.message || "네트워크 오류가 발생했습니다." };
   }
 }
