@@ -320,7 +320,7 @@ function CoreFeatures() {
       title: "AI 학술 논문 처방",
       icon: BookOpen,
       gradient: "from-amber-600/80 to-amber-400/40",
-      desc: "검증된 A급 최상위 논문 800편을 학습한 RAG 시스템이 환각(Hallucination) 없이 정확한 미생물을 추천합니다.",
+      desc: "검증된 A급 최상위 논문 1,764편을 학습한 RAG 시스템이 환각(Hallucination) 없이 정확한 미생물을 추천합니다.",
     },
     {
       title: "기상 연동 살포 신호등",

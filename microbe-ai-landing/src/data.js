@@ -178,12 +178,30 @@ export async function fetchRecommend(crop, address) {
     const rec = await recRes.json();
     if (!recRes.ok) throw new Error(rec.error || "추천 요청 실패");
 
-    // 토양 출처/농지 정보를 함께 실어줌 (결과 화면에서 "전국 평균값" 안내 등에 사용 가능)
+    // 토양 출처/농지 정보 + 실제 연동해온 토양·기상 원본 값을 함께 실어줌
+    // (결과 화면 "내 토양 정보 보기"에서 그대로 표시)
     return {
       ...rec,
       soilDataSource: env.soilDataSource,
       isFarmland: env.isFarmland,
       landUseType: env.landUseType,
+      soilInfo: {
+        soilPh: env.soilPh,
+        soilOrganic: env.soilOrganic,
+        soilPhosphate: env.soilPhosphate,
+        soilPotassium: env.soilPotassium,
+        soilCalcium: env.soilCalcium,
+        soilMagnesium: env.soilMagnesium,
+        soilSilicate: env.soilSilicate,
+        soilEc: env.soilEc,
+        soilMoisture: env.soilMoisture,
+        soilTemp: env.soilTemp,
+        airTemp: env.airTemp,
+        rain: env.rain,
+        solarRadiation: env.solarRadiation,
+        soilDataSource: env.soilDataSource,
+        timestamp: env.timestamp,
+      },
     };
   } catch (e) {
     console.warn("[TOBio] 추천 파이프라인 실패:", e.message);

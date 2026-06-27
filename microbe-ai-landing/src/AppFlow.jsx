@@ -11,6 +11,12 @@ import {
   ShoppingCart,
   Crown,
   Tag,
+  Sprout,
+  Thermometer,
+  Droplets,
+  CloudRain,
+  Sun,
+  ChevronDown,
 } from "lucide-react";
 import { CROPS, LOAD_STEPS, delay, searchAddress, fetchRecommend, searchSprayMaterials, fetchSpraySequence } from "./data.js";
 import SaveRecordButton from "./SaveRecordButton.jsx";
@@ -346,11 +352,96 @@ export function LoadingScreen({ crop, address, onDone }) {
   );
 }
 
+/* 결과 화면 — "내 토양 정보 보기" 패널 (백엔드 getMergedData 연동 원본값) */
+function SoilInfoPanel({ soilInfo }) {
+  const SOURCE_BADGE = {
+    "실측값": { icon: "🛰️", className: "bg-emerald-50 text-emerald-700" },
+    "지역 추정값": { icon: "📊", className: "bg-stone-100 text-stone-600" },
+    "전국 평균값": { icon: "ℹ️", className: "bg-amber-50 text-amber-700" },
+  };
+  const badge = SOURCE_BADGE[soilInfo.soilDataSource];
+
+  const soilRows = [
+    { icon: Droplets, label: "토양 산도 (pH)", value: soilInfo.soilPh, unit: "" },
+    { icon: Sprout, label: "유기물", value: soilInfo.soilOrganic, unit: "g/kg" },
+    { icon: Sprout, label: "유효인산", value: soilInfo.soilPhosphate, unit: "mg/kg" },
+    { icon: Sprout, label: "칼륨", value: soilInfo.soilPotassium, unit: "cmol+/kg" },
+    { icon: Sprout, label: "칼슘", value: soilInfo.soilCalcium, unit: "cmol+/kg" },
+    { icon: Sprout, label: "마그네슘", value: soilInfo.soilMagnesium, unit: "cmol+/kg" },
+    { icon: Sprout, label: "유효규산", value: soilInfo.soilSilicate, unit: "mg/kg" },
+    { icon: Droplets, label: "전기전도도 (EC)", value: soilInfo.soilEc, unit: "dS/m" },
+  ].filter((r) => r.value !== null && r.value !== undefined);
+
+  const envRows = [
+    { icon: Droplets, label: "토양 수분", value: soilInfo.soilMoisture, unit: "%" },
+    { icon: Thermometer, label: "지온", value: soilInfo.soilTemp, unit: "°C" },
+    { icon: Thermometer, label: "기온", value: soilInfo.airTemp, unit: "°C" },
+    { icon: CloudRain, label: "강수량", value: soilInfo.rain, unit: "mm" },
+    { icon: Sun, label: "일사량", value: soilInfo.solarRadiation, unit: "" },
+  ].filter((r) => r.value !== null && r.value !== undefined);
+
+  const fmt = (v) => (typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(1)) : v);
+
+  return (
+    <Reveal>
+      <div className="rounded-2xl border border-stone-200 bg-white shadow-sm p-4 mt-2">
+        {badge && (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold mb-3 ${badge.className}`}>
+            {badge.icon} {soilInfo.soilDataSource}
+          </span>
+        )}
+
+        {soilRows.length > 0 && (
+          <>
+            <p className="text-xs font-bold text-stone-500 mb-2">🌱 토양 성분</p>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {soilRows.map((r) => (
+                <div key={r.label} className="rounded-xl bg-stone-50 px-3 py-2">
+                  <p className="text-[11px] text-stone-400">{r.label}</p>
+                  <p className="text-sm font-semibold text-stone-800">
+                    {fmt(r.value)}
+                    {r.unit && <span className="text-[11px] font-normal text-stone-400"> {r.unit}</span>}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {envRows.length > 0 && (
+          <>
+            <p className="text-xs font-bold text-stone-500 mb-2">🌤️ 기상 환경</p>
+            <div className="grid grid-cols-2 gap-2">
+              {envRows.map((r) => (
+                <div key={r.label} className="rounded-xl bg-stone-50 px-3 py-2">
+                  <p className="text-[11px] text-stone-400">{r.label}</p>
+                  <p className="text-sm font-semibold text-stone-800">
+                    {fmt(r.value)}
+                    {r.unit && <span className="text-[11px] font-normal text-stone-400"> {r.unit}</span>}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {soilInfo.timestamp && (
+          <p className="mt-3 text-[11px] text-stone-400">측정 시각: {soilInfo.timestamp}</p>
+        )}
+      </div>
+    </Reveal>
+  );
+}
+
 /* ──────────────────────────────────────────────────────────────
    결과 화면
 ────────────────────────────────────────────────────────────── */
 export function ResultScreen({ result, crop, address, onCheck, onHome }) {
   const [showAll, setShowAll] = useState(false);
+  const [showSoilInfo, setShowSoilInfo] = useState(false);
+  const [vendorCounts, setVendorCounts] = useState({});
+  const getVendorCount = (i) => vendorCounts[i] ?? 3;
+  const showMoreVendors = (i) => setVendorCounts((prev) => ({ ...prev, [i]: getVendorCount(i) + 5 }));
   const cropName = CROPS.find((c) => c.id === crop)?.name || crop || "";
   const addrName = address?.address || address?.roadAddr || address?.jibunAddr || "입력 주소";
 
@@ -415,6 +506,25 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
         {result.soilDataSource === "실측값" && (
           <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5 mb-3 text-xs text-emerald-800 leading-relaxed">
             🛰️ 이 농경지의 <strong>실측 토양검정 데이터</strong>를 기준으로 추천했어요.
+          </div>
+        )}
+
+        {/* 내 토양 정보 보기 (백엔드 soilInfo) */}
+        {result.soilInfo && (
+          <div className="mb-3">
+            <button
+              onClick={() => setShowSoilInfo((v) => !v)}
+              className="flex w-full items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left shadow-sm hover:border-emerald-300 transition-colors"
+            >
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-stone-800">
+                <Sprout className="h-4 w-4 text-emerald-700" />내 토양 정보 보기
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-stone-400 transition-transform ${showSoilInfo ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {showSoilInfo && <SoilInfoPanel soilInfo={result.soilInfo} />}
           </div>
         )}
 
@@ -530,7 +640,7 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
                           🛒 구매 가능 판매처 ({vendors.length}곳)
                         </h5>
                         <div className="space-y-2">
-                          {vendors.map((v, vi) => {
+                          {vendors.slice(0, getVendorCount(i)).map((v, vi) => {
                             const products = v.products || [
                               { product: v.productName || v.name, price: v.price, contact: v.phone, onlineUrl: v.onlineUrl },
                             ];
@@ -578,6 +688,15 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
                             );
                           })}
                         </div>
+
+                        {vendors.length > getVendorCount(i) && (
+                          <button
+                            onClick={() => showMoreVendors(i)}
+                            className="mt-2 w-full rounded-md border border-stone-300 py-2 text-xs font-semibold text-stone-600 hover:border-emerald-400 hover:text-emerald-700 transition-colors"
+                          >
+                            판매처 더보기 (+{Math.min(5, vendors.length - getVendorCount(i))})
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
