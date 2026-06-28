@@ -185,10 +185,11 @@ export default function LoginScreen({ onBack, onLogin }) {
     <div className="min-h-screen flex bg-stone-50">
       {/* 왼쪽 비주얼 패널 */}
       <div className="hidden md:flex md:w-1/2 relative overflow-hidden bg-cover bg-center" style={{ backgroundImage: "url(img/로그인창.jpg)" }}>
+        <div className="absolute inset-0 bg-black/35" />
         <TobioMascot />
-        <div className="relative z-10 m-auto px-10 text-center">
-          <h2 className="text-2xl font-bold text-white drop-shadow">TOBio와 함께 건강한 농사</h2>
-          <p className="mt-3 text-sm leading-relaxed text-emerald-50/85">
+        <div className="relative z-10 mx-auto mt-[25%] px-10 text-center">
+          <h2 className="text-2xl font-bold text-white" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}>TOBio와 함께 건강한 농사</h2>
+          <p className="mt-3 text-sm leading-relaxed text-white/90" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.5)" }}>
             맞춤 미생물 추천부터 살포 기록까지,
             <br />
             토비오가 곁에서 도와드려요.
