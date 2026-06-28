@@ -468,7 +468,7 @@ function ServiceShowcase() {
                 </span>
                 <p className="font-bold text-[15px] leading-tight">지금 살포해도 괜찮아요</p>
               </div>
-              <p className="text-[11px] text-white/85 leading-relaxed">2026-06-28 살포 가능 — 권장 간격을 충족합니다</p>
+              <p className="text-[11px] text-white/85 leading-relaxed">권장 간격을 충족합니다</p>
               <p className="mt-2 text-xs font-semibold">📅 권장 살포 가능일: 2026-06-28</p>
             </div>
           </div>
