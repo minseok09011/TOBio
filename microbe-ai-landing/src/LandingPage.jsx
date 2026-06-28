@@ -405,10 +405,18 @@ function ServiceShowcase() {
             </div>
           </div>
           <p className="text-[10px] font-bold text-stone-500 mb-2">구매 가능 판매처 (2곳)</p>
-          {["씨엠씨코리아", "천지인바이오텍"].map((v) => (
-            <div key={v} className="border-l-4 border-l-amber-400 border border-stone-200 rounded-r-lg px-2.5 py-2 mb-1.5 bg-stone-50">
-              <p className="text-xs font-bold text-stone-800">{v}</p>
-              <p className="text-[9px] text-stone-500">토양미생물제제</p>
+          {[
+            { name: "씨엠씨코리아", product: "토토빈(토양미생물제제)", price: "8,000원/500g", tel: "042-671-3378" },
+            { name: "천지인바이오텍", product: "큰대감(미생물)", price: "25,000원/500mL", tel: "033-554-4416" },
+          ].map((v) => (
+            <div key={v.name} className="border-l-4 border-l-amber-400 border border-stone-200 rounded-r-lg px-2.5 py-2 mb-1.5 bg-stone-50">
+              <p className="text-xs font-bold text-stone-800">{v.name}</p>
+              <p className="text-[9px] text-stone-500">{v.product}</p>
+              <p className="text-[9px] text-stone-500">{v.price}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="inline-flex items-center gap-0.5 text-[9px] text-stone-600 border border-stone-300 rounded px-1.5 py-0.5 bg-white">📞 {v.tel}</span>
+                <span className="inline-flex items-center gap-0.5 text-[9px] text-white bg-emerald-700 rounded px-1.5 py-0.5">🛒 온라인 구매</span>
+              </div>
             </div>
           ))}
         </div>
@@ -552,8 +560,8 @@ export default function MicrobeAiLandingPage({ onStartRecommend, onStartCheck, u
         onMyRecords={onMyRecords}
       />
       <OurSolution />
-      <CoreFeatures />
       <ServiceShowcase />
+      <CoreFeatures />
       <ContactFooter />
     </div>
   );
