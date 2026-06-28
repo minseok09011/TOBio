@@ -361,6 +361,19 @@ function CoreFeatures() {
 ────────────────────────────────────────────────────────────── */
 function ServiceShowcase() {
   const [current, setCurrent] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const [direction, setDirection] = useState(1);
+
+  function goTo(next) {
+    if (animating || next === current) return;
+    setDirection(next > current ? 1 : -1);
+    setAnimating(true);
+    setTimeout(() => {
+      setCurrent(next);
+      setTimeout(() => setAnimating(false), 50);
+    }, 250);
+  }
+
   const slides = [
     {
       title: "AI 맞춤 미생물 추천",
@@ -461,17 +474,27 @@ function ServiceShowcase() {
         </Reveal>
 
         <Reveal delay={100}>
-          <div className="relative max-w-sm mx-auto">
-            {slides[current].card}
+          <div className="relative max-w-sm mx-auto overflow-hidden">
+            <div
+              className="transition-all duration-300 ease-in-out"
+              style={{
+                opacity: animating ? 0 : 1,
+                transform: animating
+                  ? `translateX(${direction * 40}px)`
+                  : "translateX(0)",
+              }}
+            >
+              {slides[current].card}
 
-            <div className="mt-6 text-center">
-              <h3 className="text-lg font-bold text-stone-900 mb-2">{slides[current].title}</h3>
-              <p className="text-sm text-stone-500 leading-relaxed max-w-md mx-auto">{slides[current].desc}</p>
+              <div className="mt-6 text-center">
+                <h3 className="text-lg font-bold text-stone-900 mb-2">{slides[current].title}</h3>
+                <p className="text-sm text-stone-500 leading-relaxed max-w-md mx-auto">{slides[current].desc}</p>
+              </div>
             </div>
 
             <div className="flex items-center justify-center gap-4 mt-8">
               <button
-                onClick={() => setCurrent((c) => (c - 1 + slides.length) % slides.length)}
+                onClick={() => goTo((current - 1 + slides.length) % slides.length)}
                 className="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-sm flex items-center justify-center text-stone-500 hover:border-emerald-400 hover:text-emerald-700 transition-colors"
               >
                 &larr;
@@ -480,7 +503,7 @@ function ServiceShowcase() {
                 {slides.map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => setCurrent(i)}
+                    onClick={() => goTo(i)}
                     className={`w-2.5 h-2.5 rounded-full transition-colors ${
                       i === current ? "bg-emerald-700" : "bg-stone-300"
                     }`}
@@ -488,7 +511,7 @@ function ServiceShowcase() {
                 ))}
               </div>
               <button
-                onClick={() => setCurrent((c) => (c + 1) % slides.length)}
+                onClick={() => goTo((current + 1) % slides.length)}
                 className="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-sm flex items-center justify-center text-stone-500 hover:border-emerald-400 hover:text-emerald-700 transition-colors"
               >
                 &rarr;
