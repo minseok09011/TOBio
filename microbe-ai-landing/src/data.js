@@ -128,7 +128,25 @@ function nowDateTime() {
 // 서버를 먼저 깨워둔다. 깨운 뒤의 getMergedData/recommend/spray 호출이 warm 서버를 때려
 // 기존 타임아웃(20/60/30초) 안에 들어오게 한다.
 // warm 상태면 첫 /health 가 즉시 200(+paperIndexLoaded:true)이라 추가 지연 없이 통과한다.
-async function ensureBackendAwake({ requireIndex } = {}) {
+async function ensureBackendAwake({ requireIndex } = {}, onStatus) {
+  // warm 빠른 감지: 짧은 타임아웃으로 /health 1회 프로브. 이미 깨어 있으면
+  // onStatus를 부르지 않고 즉시 통과 → 평소엔 "깨우는 중" 배너가 안 뜬다.
+  // (프로브 요청 자체도 spin-up을 트리거하므로 cold여도 낭비가 아니다.)
+  try {
+    const res = await fetch(`${API_BASE_URL}/health`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (res.ok) {
+      if (!requireIndex) return true;
+      const body = await res.json();
+      if (body.paperIndexLoaded === true) return true;
+    }
+  } catch (e) {
+    // 프로브 실패(잠듦/네트워크) → 아래 폴링 루프로 깨운다
+  }
+
+  // warm이 아님 → "깨우는 중" 알림 후 기존 폴링 루프 수행
+  onStatus?.(true);
   const deadline = Date.now() + 150000; // 약 2.5분 데드라인
   while (Date.now() < deadline) {
     try {
@@ -137,22 +155,29 @@ async function ensureBackendAwake({ requireIndex } = {}) {
         signal: AbortSignal.timeout(90000),
       });
       if (res.ok) {
-        if (!requireIndex) return true; // 200 만으로 충분(살포용)
+        if (!requireIndex) {
+          onStatus?.(false);
+          return true; // 200 만으로 충분(살포용)
+        }
         const body = await res.json();
-        if (body.paperIndexLoaded === true) return true; // 인덱스 로드까지 확인(추천용)
+        if (body.paperIndexLoaded === true) {
+          onStatus?.(false);
+          return true; // 인덱스 로드까지 확인(추천용)
+        }
       }
     } catch (e) {
       // abort/네트워크로 throw 나도(아직 깨는 중) 잡고 폴링 계속
     }
     await delay(5000);
   }
+  onStatus?.(false);
   return false; // 데드라인 초과
 }
 
-export async function fetchRecommend(crop, address) {
+export async function fetchRecommend(crop, address, onStatus) {
   try {
     // 0) 백엔드 cold-start 선깨우기 — 인덱스 로드까지 기다려야 recommendMicrobe가 503 안 줌
-    const awake = await ensureBackendAwake({ requireIndex: true });
+    const awake = await ensureBackendAwake({ requireIndex: true }, onStatus);
     if (!awake) return { error: "서버가 깨어나는 데 시간이 오래 걸리고 있어요. 잠시 후 다시 시도해주세요." };
 
     // 1) 좌표/법정동코드 확보 (자동완성에서 고른 주소는 이미 있음, 아니면 지오코딩)
@@ -327,7 +352,7 @@ export function classifyInoculantSpecies(speciesName) {
 // payload: { inoculantName, inoculantSpecies?, inoculantType, inoculantDate, materials:[{name,kind,appliedDate}] }
 // inoculantSpecies: 자동완성에서 고른 학명(제품명을 골랐어도 그 제품의 실제 학명) — 있으면 이걸로
 // 백엔드가 세균/곰팡이 자동판정. 없으면 inoculantName 자체가 학명처럼 보일 때만 폴백 사용.
-export async function fetchSpraySequence({ inoculantName, inoculantSpecies, inoculantType, inoculantDate, materials }) {
+export async function fetchSpraySequence({ inoculantName, inoculantSpecies, inoculantType, inoculantDate, materials, onStatus }) {
   const body = {
     materials: (materials || [])
       .filter((m) => (m.name || "").trim() && (m.appliedDate || "").trim())
@@ -340,7 +365,7 @@ export async function fetchSpraySequence({ inoculantName, inoculantSpecies, inoc
 
   try {
     // 0) 백엔드 cold-start 선깨우기 — 살포 엔진은 인덱스 불필요하므로 200만 확인
-    const awake = await ensureBackendAwake({ requireIndex: false });
+    const awake = await ensureBackendAwake({ requireIndex: false }, onStatus);
     if (!awake) return { error: "서버가 깨어나는 데 시간이 오래 걸리고 있어요. 잠시 후 다시 시도해주세요." };
 
     const res = await fetch(`${API_BASE_URL}/api/spraySequence`, {
