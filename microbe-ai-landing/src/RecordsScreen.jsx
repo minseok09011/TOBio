@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, FileText, Sprout, FlaskConical } from "lucide-react";
 import { listMyRecords } from "./records.js";
 
-/* “내 기록” 목록 (최소 범위: 저장한 추천/살포 결과를 다시 보기) */
+/* "내 기록" 목록 (최소 범위: 저장한 추천/살포 결과를 다시 보기) */
 export default function RecordsScreen({ onBack, onSelect }) {
-  const [rows, setRows] = useState(null); // null=로딩, []=비어있음
+  const [rows, setRows] = useState(null);
   const [err, setErr] = useState("");
-  const [filter, setFilter] = useState("all"); // all | recommend | spray
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
     listMyRecords()
@@ -39,11 +39,10 @@ export default function RecordsScreen({ onBack, onSelect }) {
         <button onClick={onBack} className="text-stone-500 hover:text-stone-800" aria-label="홈으로">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="font-bold text-emerald-800">📒 내 기록</h1>
+        <h1 className="font-bold text-emerald-800">내 기록</h1>
       </header>
 
       <div className="flex-1 max-w-lg w-full mx-auto px-5 py-6">
-        {/* 필터 탭 */}
         <div className="flex gap-2 mb-4">
           {TABS.map((t) => (
             <button
@@ -60,17 +59,17 @@ export default function RecordsScreen({ onBack, onSelect }) {
           ))}
         </div>
 
-        {rows === null && <p className="text-center text-stone-500 py-10">불러오는 중…</p>}
+        {rows === null && <p className="text-center text-stone-500 py-10">불러오는 중...</p>}
 
         {err && (
-          <p className="text-center text-sm text-rose-600 py-4">⚠️ {err}</p>
+          <p className="text-center text-sm text-rose-600 py-4">{err}</p>
         )}
 
         {filtered && filtered.length === 0 && !err && (
           <div className="text-center py-16 text-stone-500">
             <FileText className="h-12 w-12 mx-auto mb-3 text-stone-300" />
             <p className="font-semibold mb-1">아직 저장한 기록이 없어요</p>
-            <p className="text-sm text-stone-400">추천·살포 결과 화면에서 “내 기록에 저장”을 눌러보세요.</p>
+            <p className="text-sm text-stone-400">추천/살포 결과 화면에서 "내 기록에 저장"을 눌러보세요.</p>
           </div>
         )}
 
@@ -98,7 +97,7 @@ export default function RecordsScreen({ onBack, onSelect }) {
                 <p className="font-semibold text-stone-800">{r.title || (isSpray ? "살포 확인 결과" : "추천 결과")}</p>
                 {r.crop && <p className="text-xs text-stone-500 mt-0.5">작물: {r.crop}</p>}
                 {r.summary && <p className="text-sm text-stone-600 mt-1 leading-relaxed">{r.summary}</p>}
-                {r.payload && <p className="text-xs text-emerald-600 font-semibold mt-2">결과 다시 보기 →</p>}
+                {r.payload && <p className="text-xs text-emerald-600 font-semibold mt-2">결과 다시 보기 &rarr;</p>}
               </button>
             );
           })}
