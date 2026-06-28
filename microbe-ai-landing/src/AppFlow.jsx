@@ -533,13 +533,13 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
             </div>
           )}
           {evidenceStars && (
-            <div className={`flex-1 rounded-2xl p-3 text-xs ${
+            <div className={`flex-shrink-0 rounded-2xl p-3 text-xs text-center ${
               result.evidenceConfidence === "strong" ? "bg-emerald-50 border border-emerald-100 text-emerald-800" :
               result.evidenceConfidence === "moderate" ? "bg-amber-50 border border-amber-200 text-amber-800" :
               "bg-stone-100 border border-stone-200 text-stone-600"
             }`}>
-              <p className="font-bold mb-1">📄 논문 근거 강도</p>
-              <p className="text-amber-500 text-base leading-none tracking-tight">{evidenceStars}</p>
+              <p className="font-bold mb-1 whitespace-nowrap">📄 근거 강도</p>
+              <p className="text-amber-500 text-base leading-none">{evidenceStars}</p>
             </div>
           )}
         </div>
