@@ -363,7 +363,7 @@ function ServiceShowcase() {
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState(1);
 
-  const [phase, setPhase] = useState("visible"); // visible | slideOut | fadeIn
+  const [phase, setPhase] = useState("visible"); // visible | slideOut | hidden | fadeIn
 
   function goTo(next) {
     if (phase !== "visible" || next === current) return;
@@ -371,9 +371,11 @@ function ServiceShowcase() {
     setPhase("slideOut");
     setTimeout(() => {
       setCurrent(next);
-      setPhase("fadeIn");
-      setTimeout(() => setPhase("visible"), 50);
-    }, 300);
+      setPhase("hidden");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setPhase("fadeIn"));
+      });
+    }, 400);
   }
 
   const slides = [
@@ -476,15 +478,16 @@ function ServiceShowcase() {
         </Reveal>
 
         <Reveal delay={100}>
-          <div className="relative max-w-sm mx-auto overflow-hidden" style={{ minHeight: 520 }}>
+          <div className="relative max-w-sm mx-auto" style={{ minHeight: 560 }}>
             <div
-              className="transition-all duration-300 ease-in-out"
+              className={`transition-all ease-in-out ${phase === "slideOut" ? "duration-[400ms]" : "duration-500"}`}
               style={{
-                opacity: phase === "visible" ? 1 : 0,
+                opacity: phase === "visible" || phase === "fadeIn" ? 1 : 0,
                 transform: phase === "slideOut"
-                  ? `translateX(${direction * -60}px)`
+                  ? `translateX(${direction * -80}px)`
                   : "translateX(0)",
               }}
+              onTransitionEnd={() => { if (phase === "fadeIn") setPhase("visible"); }}
             >
               {slides[current].card}
 
