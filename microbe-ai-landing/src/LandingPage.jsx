@@ -484,7 +484,7 @@ function ServiceShowcase() {
               style={{
                 opacity: phase === "visible" || phase === "fadeIn" ? 1 : 0,
                 transform: phase === "slideOut"
-                  ? `translateX(${direction * -80}px)`
+                  ? `translateX(${direction * 80}px)`
                   : "translateX(0)",
               }}
               onTransitionEnd={() => { if (phase === "fadeIn") setPhase("visible"); }}
