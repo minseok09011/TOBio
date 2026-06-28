@@ -1534,7 +1534,7 @@ export function CheckResultScreen({ result, onBack }) {
             {/* 핵심 판정 — 추천 결과 톤(그라데이션 헤더 + 배지 + 토비오 + 판정 도형) */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-600 text-white p-5">
               <img
-                src={safe ? "img/tobio.png" : "img/토피오 펫말세모.png"}
+                src={safe ? "img/토비오 펫말 O.png" : "img/토피오 펫말세모.png"}
                 alt=""
                 className="absolute -right-2 -bottom-12 h-40 w-auto object-contain opacity-90"
               />
