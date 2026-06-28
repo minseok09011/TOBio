@@ -88,6 +88,8 @@
                 { title: "Trichoderma as a biological control agent", journal: "Frontiers in Microbiology", year: 2020 },
             ],
             quotaExceeded: false,
+            evidenceConfidence: "strong",
+            evidenceScore: { topScore: 0.78, meanTop5: 0.74 },
         });
     }
 

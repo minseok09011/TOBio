@@ -512,22 +512,37 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
           </div>
         </Reveal>
 
-        {/* 토양 데이터 출처 안내 (백엔드 soilDataSource) — 상황 설명 위에 먼저 */}
-        {result.soilDataSource === "전국 평균값" && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-3 text-xs text-amber-800 leading-relaxed">
-            ℹ️ 이 주소의 실측·지역 토양 데이터가 없어 <strong>전국 평균값</strong>으로 추천했어요. 정확한 농경지 지번 주소를 입력하면 실측값 기준으로 더 정확해집니다.
-          </div>
-        )}
-        {result.soilDataSource === "지역 추정값" && (
-          <div className="bg-stone-100 rounded-2xl p-3.5 mb-3 text-xs text-stone-600 leading-relaxed">
-            📊 이 농경지의 실측 기록이 없어, <strong>해당 지역(법정동) 토양 통계</strong>로 추정한 값을 기준으로 추천했어요.
-          </div>
-        )}
-        {result.soilDataSource === "실측값" && (
-          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5 mb-3 text-xs text-emerald-800 leading-relaxed">
-            🛰️ 이 농경지의 <strong>실측 토양검정 데이터</strong>를 기준으로 추천했어요.
-          </div>
-        )}
+        {/* 토양 데이터 출처 + 논문 근거 강도 — 나란히 배치 */}
+        <div className="flex gap-2.5 mb-3">
+          {result.soilDataSource === "전국 평균값" && (
+            <div className="flex-1 bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-800">
+              <p className="font-bold mb-1">ℹ️ 전국 평균값</p>
+              <p className="leading-relaxed">실측 데이터가 없어 전국 평균으로 추천했어요</p>
+            </div>
+          )}
+          {result.soilDataSource === "지역 추정값" && (
+            <div className="flex-1 bg-stone-100 rounded-2xl p-3 text-xs text-stone-600">
+              <p className="font-bold mb-1">📊 지역 추정값</p>
+              <p className="leading-relaxed">해당 지역 토양 통계로 추정한 값이에요</p>
+            </div>
+          )}
+          {result.soilDataSource === "실측값" && (
+            <div className="flex-1 bg-emerald-50 border border-emerald-100 rounded-2xl p-3 text-xs text-emerald-800">
+              <p className="font-bold mb-1">🛰️ 실측값</p>
+              <p className="leading-relaxed">실측 토양검정 데이터 기준이에요</p>
+            </div>
+          )}
+          {evidenceStars && (
+            <div className={`flex-1 rounded-2xl p-3 text-xs ${
+              result.evidenceConfidence === "strong" ? "bg-emerald-50 border border-emerald-100 text-emerald-800" :
+              result.evidenceConfidence === "moderate" ? "bg-amber-50 border border-amber-200 text-amber-800" :
+              "bg-stone-100 border border-stone-200 text-stone-600"
+            }`}>
+              <p className="font-bold mb-1">📄 논문 근거 강도</p>
+              <p className="text-amber-500 text-base leading-none tracking-tight">{evidenceStars}</p>
+            </div>
+          )}
+        </div>
 
         {/* 상황 설명 (백엔드 explanation) */}
         {explanation && (
