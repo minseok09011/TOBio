@@ -115,7 +115,7 @@ function calcSpraySequence(materials, inoculantType, inoculantDate, currentTempC
   let verdict, headline;
   if (gap <= 0) {
     verdict = "safe";
-    headline = `${inoculantDate} 살포 가능 — 권장 간격을 충족합니다.`;
+    headline = `권장 간격을 충족합니다.`;
   } else {
     verdict = "wait";
     headline = `아직 이릅니다. ${safeDate} 이후(약 ${gap}일 더) 살포를 권장합니다. 길수록 안전합니다.`;
