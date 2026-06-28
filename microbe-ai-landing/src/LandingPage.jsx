@@ -384,10 +384,13 @@ function ServiceShowcase() {
       desc: "주소와 작물만 입력하면, 실시간 토양·기상 데이터를 분석해 A급 논문 1,764편 근거의 최적 미생물을 추천합니다.",
       card: (
         <div className="bg-white rounded-2xl shadow-md p-5 text-left w-full max-w-xs mx-auto font-medium" style={{ minHeight: 420 }}>
-          <div className="bg-gradient-to-br from-emerald-800 to-emerald-600 rounded-xl p-4 mb-4 text-white">
-            <p className="text-xs uppercase tracking-widest text-white/70 mb-1">AI Recommendation</p>
-            <p className="font-bold text-base">토비오의 미생물 추천</p>
-            <p className="text-xs text-white/80 mt-1">작물: 양파 | 농경지: 전남 화순군</p>
+          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-800 to-emerald-600 rounded-xl p-4 mb-4 text-white">
+            <img src="img/tobio.png" alt="" className="absolute -right-3 -bottom-5 h-24 w-auto object-contain opacity-80" />
+            <div className="relative">
+              <p className="text-xs uppercase tracking-widest text-white/70 mb-1">AI Recommendation</p>
+              <p className="font-bold text-base">토비오의 미생물 추천</p>
+              <p className="text-xs text-white/80 mt-1">작물: 양파 | 농경지: 전남 화순군</p>
+            </div>
           </div>
           <div className="flex gap-2 mb-3">
             <div className="flex-1 bg-stone-100 rounded-lg px-2.5 py-2">
