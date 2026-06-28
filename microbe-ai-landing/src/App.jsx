@@ -5,6 +5,7 @@ import { CROPS } from "./data.js";
 import LoginScreen from "./LoginScreen.jsx";
 import RecordsScreen from "./RecordsScreen.jsx";
 import { onAuthChange, signOut } from "./records.js";
+import MascotCharacters from "./MascotCharacters.jsx";
 
 export default function App() {
   const [view, setView] = useState("landing"); // landing | crop | purpose | address | soilManual | loading | result | check | records
@@ -161,5 +162,10 @@ export default function App() {
     }
   }
 
-  return <>{renderView()}</>;
+  return (
+    <>
+      {renderView()}
+      <MascotCharacters />
+    </>
+  );
 }
