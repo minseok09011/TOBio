@@ -532,7 +532,7 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
               </p>
               {(result.soilDataSource === "지역 추정값" || result.soilDataSource === "전국 평균값") && (
                 <details className="mt-2">
-                  <summary className="cursor-pointer font-semibold text-stone-500 select-none">💡 추가 안내</summary>
+                  <summary className="cursor-pointer font-semibold text-stone-500 select-none">추가 안내</summary>
                   <p className="mt-1.5 leading-relaxed">
                     가까운{" "}
                     <a href="https://www.rda.go.kr/young/board/board35.do" target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-700 underline">
