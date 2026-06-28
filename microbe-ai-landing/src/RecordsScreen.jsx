@@ -10,7 +10,16 @@ export default function RecordsScreen({ onBack, onSelect }) {
 
   useEffect(() => {
     listMyRecords()
-      .then(setRows)
+      .then((data) => {
+        const seen = new Set();
+        const deduped = data.filter((r) => {
+          const key = `${r.kind}||${r.crop || “”}||${r.summary || “”}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setRows(deduped);
+      })
       .catch((e) => {
         setErr(e?.message || “기록을 불러오지 못했습니다.”);
         setRows([]);
