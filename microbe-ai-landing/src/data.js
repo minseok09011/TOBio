@@ -30,12 +30,15 @@ export const CROPS = [
   { id: "cabbage", icon: "🥬", name: "배추" },
   { id: "potato", icon: "🥔", name: "감자" },
   { id: "soybean", icon: "🥜", name: "대두" },
-  { id: "corn", icon: "🌽", name: "옥수수" },
   { id: "wheat", icon: "🌿", name: "밀" },
   { id: "lettuce", icon: "🥗", name: "상추" },
   { id: "garlic", icon: "🧄", name: "마늘" },
   { id: "onion", icon: "🧅", name: "양파" },
   { id: "apple", icon: "🍎", name: "사과" },
+  { id: "cucumber", icon: "🥒", name: "오이" },
+  { id: "strawberry", icon: "🍓", name: "딸기" },
+  // 인삼 전용 이모지가 없어 임시로 당근(🥕) 사용, 추후 교체 예정
+  { id: "ginseng", icon: "🥕", name: "인삼" },
 ];
 
 export const LOAD_STEPS = [
@@ -220,7 +223,8 @@ export async function fetchRecommend(crop, address, onStatus) {
       // 1-3) 토양·기상·농지여부
       const mergedRes = await fetch(
         `${API_BASE_URL}/api/getMergedData?stationId=${station.id}&lat=${lat}&lng=${lng}` +
-          `&stdgCd=${encodeURIComponent(stdgCd)}&dateStr=${dateStr}&timeStr=${timeStr}`,
+          `&stdgCd=${encodeURIComponent(stdgCd)}&dateStr=${dateStr}&timeStr=${timeStr}` +
+          `&crop=${encodeURIComponent(crop)}`,
         { signal: AbortSignal.timeout(20000) }
       );
       env = await mergedRes.json();
