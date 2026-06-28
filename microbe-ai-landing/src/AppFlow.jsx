@@ -530,6 +530,18 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
                  result.soilDataSource === "지역 추정값" ? "해당 지역 토양 통계로 추정한 값이에요" :
                  "실측 토양검정 데이터 기준이에요"}
               </p>
+              {(result.soilDataSource === "지역 추정값" || result.soilDataSource === "전국 평균값") && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer font-semibold text-stone-500 select-none">💡 추가 안내</summary>
+                  <p className="mt-1.5 leading-relaxed">
+                    가까운{" "}
+                    <a href="https://www.rda.go.kr/young/board/board35.do" target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-700 underline">
+                      농업기술센터
+                    </a>
+                    에서 무료 토양검정을 받으면 지금보다 더 맞춤화된 추천을 드릴 수 있어요.
+                  </p>
+                </details>
+              )}
             </div>
             {evidenceStars && (
               <>
@@ -544,15 +556,6 @@ export function ResultScreen({ result, crop, address, onCheck, onHome }) {
                 </div>
               </>
             )}
-          </div>
-        )}
-        {(result.soilDataSource === "지역 추정값" || result.soilDataSource === "전국 평균값") && (
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3 mb-3 text-xs text-stone-600 leading-relaxed">
-            💡 <strong>추가 안내</strong> — 가까운{" "}
-            <a href="https://www.rda.go.kr/young/board/board35.do" target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-700 underline">
-              농업기술센터
-            </a>
-            에서 무료 토양검정을 받으면 지금보다 더 맞춤화된 추천을 드릴 수 있어요.
           </div>
         )}
 
