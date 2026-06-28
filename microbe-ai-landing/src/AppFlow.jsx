@@ -265,6 +265,7 @@ export function AddressInput({ address, onSelect, onBack, onNext, user }) {
 export function LoadingScreen({ crop, address, onDone }) {
   const [stepIdx, setStepIdx] = useState(0);
   const [pct, setPct] = useState(0);
+  const [waking, setWaking] = useState(false);
   const cropMeta = CROPS.find((c) => c.id === crop);
 
   useEffect(() => {
@@ -272,7 +273,9 @@ export function LoadingScreen({ crop, address, onDone }) {
 
     async function run() {
       const STEP_DELAYS = [800, 2200, 1800, 0];
-      const apiPromise = fetchRecommend(crop, address);
+      const apiPromise = fetchRecommend(crop, address, (w) => {
+        if (!cancelled) setWaking(w);
+      });
 
       for (let i = 1; i <= LOAD_STEPS.length; i++) {
         if (i < LOAD_STEPS.length) {
@@ -335,6 +338,12 @@ export function LoadingScreen({ crop, address, onDone }) {
           style={{ left: `${pct}%` }}
         />
       </div>
+
+      {waking && (
+        <div className="w-full max-w-[360px] rounded-xl bg-amber-50 text-amber-800 text-sm px-4 py-3 mb-3 text-left">
+          ☕ 서버를 깨우는 중입니다 (최대 1~2분, 새벽엔 더 걸릴 수 있어요)
+        </div>
+      )}
 
       <div className="w-full max-w-[360px] space-y-2.5 text-left">
         {LOAD_STEPS.map((s, i) => {
@@ -1030,6 +1039,7 @@ export function CheckScreen({ prefill, onBack, onResult }) {
   const [inoculantDate, setInoculantDate] = useState(todayStr());
   const [materials, setMaterials] = useState([newMaterial()]);
   const [checking, setChecking] = useState(false);
+  const [waking, setWaking] = useState(false);
   const [inoculantResults, setInoculantResults] = useState([]);
   const [inoculantOpen, setInoculantOpen] = useState(false);
   const [inoculantSearching, setInoculantSearching] = useState(false);
@@ -1092,7 +1102,8 @@ export function CheckScreen({ prefill, onBack, onResult }) {
       return;
     }
     setChecking(true);
-    const data = await fetchSpraySequence({ inoculantName, inoculantSpecies, inoculantType, inoculantDate, materials: valid });
+    const data = await fetchSpraySequence({ inoculantName, inoculantSpecies, inoculantType, inoculantDate, materials: valid, onStatus: setWaking });
+    setWaking(false);
     setChecking(false);
     onResult(data);
   }
@@ -1196,8 +1207,8 @@ export function CheckScreen({ prefill, onBack, onResult }) {
           />
         ))}
 
-        <button onClick={handleCheck} disabled={checking} className={`${PRIMARY_BTN} mt-3`}>
-          {checking ? "계산 중..." : "안전 살포일 확인하기"}
+        <button onClick={handleCheck} disabled={checking || waking} className={`${PRIMARY_BTN} mt-3`}>
+          {waking ? "☕ 서버 깨우는 중... (최대 1~2분)" : checking ? "계산 중..." : "안전 살포일 확인하기"}
         </button>
       </div>
     </div>
