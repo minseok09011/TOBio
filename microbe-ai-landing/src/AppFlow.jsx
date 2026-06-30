@@ -23,6 +23,7 @@ import {
   CROPS,
   PURPOSES,
   LOAD_STEPS,
+  SPRAY_LOAD_STEPS,
   delay,
   searchAddress,
   resolveLatLng,
@@ -498,6 +499,128 @@ export function LoadingScreen({ crop, purpose, address, onDone }) {
 
       <div className="w-full max-w-[360px] space-y-2.5 text-left">
         {LOAD_STEPS.map((s, i) => {
+          const status = i < stepIdx ? "done" : i === stepIdx ? "active" : "pending";
+          return (
+            <div
+              key={s.id}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-sm transition-colors ${
+                status === "done"
+                  ? "bg-emerald-50"
+                  : status === "pending"
+                  ? "bg-white opacity-45"
+                  : "bg-white border-l-4 border-amber-500"
+              }`}
+            >
+              <span className="text-lg w-6 text-center">{s.icon}</span>
+              <span className="flex-1 text-sm font-semibold text-stone-800">
+                {status === "done" ? s.doneLabel : s.label}
+              </span>
+              <span>{status === "done" ? "✅" : status === "active" ? "⏳" : "⬜"}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   살포 시퀀스 로딩 화면 — 추천 LoadingScreen과 동일 디자인,
+   단계 텍스트만 살포 맥락(농약 잔류·미생물 상호작용·안전일 산출)으로.
+   기존엔 결과가 너무 즉시 떠서 "성의 없어 보이는" 문제를 패딩 + 단계 진행으로 해결.
+────────────────────────────────────────────────────────────── */
+export function SprayLoadingScreen({ inoculantName, inoculantSpecies, inoculantType, inoculantDate, materials, farmAddress, onDone }) {
+  const [stepIdx, setStepIdx] = useState(0);
+  const [pct, setPct] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function run() {
+      // 살포 시퀀스는 잔류기간표 기반 계산이라 백엔드 응답이 보통 수백 ms — 서버 깨우기 안내 불필요.
+      // 단계 간 대기(ms)로 자연스러운 진행감 연출. 마지막 단계는 API 응답 대기로 채워짐.
+      const STEP_DELAYS = [700, 1500, 0];
+      const apiPromise = fetchSpraySequence({
+        inoculantName,
+        inoculantSpecies,
+        inoculantType,
+        inoculantDate,
+        materials,
+      });
+
+      for (let i = 1; i <= SPRAY_LOAD_STEPS.length; i++) {
+        if (i < SPRAY_LOAD_STEPS.length) {
+          await delay(STEP_DELAYS[i - 1]);
+          if (cancelled) return;
+          setStepIdx(i);
+          setPct((i / SPRAY_LOAD_STEPS.length) * 100);
+        }
+      }
+
+      const data = await apiPromise;
+      if (cancelled) return;
+
+      // 좌표 변환 + weatherInput 셋팅 — 추천 경유 시 prefill로 받은 주소 또는 단독 진입 시 입력 주소
+      if (!data?.error) {
+        const coords = farmAddress ? await resolveLatLng(farmAddress) : null;
+        data.weatherInput = coords
+          ? { lat: coords.lat, lng: coords.lng, inoculantType, safeDate: data.safeDate }
+          : null;
+      }
+
+      await delay(500);
+      if (cancelled) return;
+      setStepIdx(SPRAY_LOAD_STEPS.length);
+      setPct(100);
+      await delay(200);
+      if (cancelled) return;
+      onDone(data);
+    }
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center text-center px-6">
+      <style>{`
+        .tobio-sprite-frame {
+          background-image: url(img/tobio-walk-1.png);
+          background-repeat: no-repeat;
+          background-size: contain;
+          background-position: center;
+          animation: tobio-walk-bob 0.5s ease-in-out infinite alternate, tobio-sprite-cycle 0.8s steps(1) infinite;
+        }
+        @keyframes tobio-sprite-cycle {
+          0%, 12.49% { background-image: url(img/tobio-walk-1.png); }
+          12.5%, 37.49% { background-image: url(img/tobio-walk-2.png); }
+          37.5%, 62.49% { background-image: url(img/tobio-walk-3.png); }
+          62.5%, 87.49% { background-image: url(img/tobio-walk-4.png); }
+          87.5%, 100% { background-image: url(img/tobio-walk-1.png); }
+        }
+      `}</style>
+
+      <h2 className="text-lg font-bold text-stone-900 mb-1">토비오가 안전 살포일을 계산하고 있습니다</h2>
+      <p className="text-sm text-stone-500 mb-6">
+        🧪 농약과 미생물제 상호작용을 분석하고 있어요...
+      </p>
+
+      <div className="relative w-full max-w-[360px] h-[130px] mb-6">
+        <div
+          className="absolute left-1 bottom-[18px] h-2 rounded-full bg-emerald-700 transition-[width] duration-[1100ms] ease-in-out"
+          style={{ width: `${pct}%` }}
+        />
+        <div
+          className="tobio-sprite-frame absolute bottom-[26px] w-[60px] h-[94px] -translate-x-1/2 transition-[left] duration-[1100ms] ease-in-out"
+          style={{ left: `${pct}%` }}
+        />
+      </div>
+
+      <div className="w-full max-w-[360px] space-y-2.5 text-left">
+        {SPRAY_LOAD_STEPS.map((s, i) => {
           const status = i < stepIdx ? "done" : i === stepIdx ? "active" : "pending";
           return (
             <div
@@ -1209,8 +1332,9 @@ export function CheckScreen({ prefill, onBack, onResult }) {
   const [inoculantType, setInoculantType] = useState("both"); // bacteria | fungus | both
   const [inoculantDate, setInoculantDate] = useState(todayStr());
   const [materials, setMaterials] = useState([newMaterial()]);
-  const [checking, setChecking] = useState(false);
-  const [waking, setWaking] = useState(false);
+  // 입력 화면 → 로딩 화면(SprayLoadingScreen)으로 넘기는 payload. null이면 입력 화면.
+  // API 호출과 좌표 변환은 로딩 화면 안에서 진행해 단계 진행 UX와 함께 보임.
+  const [loadingPayload, setLoadingPayload] = useState(null);
   const [inoculantResults, setInoculantResults] = useState([]);
   const [inoculantOpen, setInoculantOpen] = useState(false);
   const [inoculantSearching, setInoculantSearching] = useState(false);
@@ -1299,26 +1423,21 @@ export function CheckScreen({ prefill, onBack, onResult }) {
     setMaterials((prev) => [...prev, newMaterial()]);
   }
 
-  async function handleCheck() {
+  function handleCheck() {
     const valid = materials.filter((m) => m.name.trim() && m.appliedDate);
     if (valid.length === 0) {
       alert("최근에 살포한 농자재(농약, 비료 등)를 이름과 날짜로 1건 이상 입력해주세요.");
       return;
     }
-    setChecking(true);
-    const data = await fetchSpraySequence({ inoculantName, inoculantSpecies, inoculantType, inoculantDate, materials: valid, onStatus: setWaking });
-    setWaking(false);
-    setChecking(false);
-
-    // 기상 적용창용 입력을 결과에 실어 전달(좌표는 농경지 주소에서 확보, 없으면 생략).
-    // 실제 기상 호출은 CheckResultScreen 진입 시(독립 폴백) — 살포 결과 표시를 막지 않음.
-    if (!data?.error) {
-      const coords = farmAddress ? await resolveLatLng(farmAddress) : null;
-      data.weatherInput = coords
-        ? { lat: coords.lat, lng: coords.lng, inoculantType, safeDate: data.safeDate }
-        : null;
-    }
-    onResult(data);
+    // API 호출 + 좌표 변환 + weatherInput 셋팅은 SprayLoadingScreen 안에서 단계 진행과 함께 수행
+    setLoadingPayload({
+      inoculantName,
+      inoculantSpecies,
+      inoculantType,
+      inoculantDate,
+      materials: valid,
+      farmAddress,
+    });
   }
 
   const TYPE_OPTS = [
@@ -1326,6 +1445,11 @@ export function CheckScreen({ prefill, onBack, onResult }) {
     { id: "fungus", label: "곰팡이제" },
     { id: "both", label: "잘 모름" },
   ];
+
+  // 입력이 제출되면 로딩 화면으로 전환 — 추천 결과와 동일한 토비오 걷기 로딩 UX
+  if (loadingPayload) {
+    return <SprayLoadingScreen {...loadingPayload} onDone={onResult} />;
+  }
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col">
@@ -1462,8 +1586,8 @@ export function CheckScreen({ prefill, onBack, onResult }) {
           />
         ))}
 
-        <button onClick={handleCheck} disabled={checking || waking} className={`${PRIMARY_BTN} mt-3`}>
-          {waking ? "☕ 서버 깨우는 중... (최대 1~2분)" : checking ? "계산 중..." : "안전 살포일 확인하기"}
+        <button onClick={handleCheck} className={`${PRIMARY_BTN} mt-3`}>
+          안전 살포일 확인하기
         </button>
       </div>
     </div>
