@@ -56,6 +56,13 @@ export const LOAD_STEPS = [
   { id: "ls3", icon: "🤖", label: "AI 미생물 추천 생성 중...", doneLabel: "AI 추천 완료" },
 ];
 
+// 살포 시퀀스용 로딩 단계 — 추천과 동일한 토비오 걷기 로딩 디자인에 살포 맥락 텍스트만 적용.
+export const SPRAY_LOAD_STEPS = [
+  { id: "ss0", icon: "📅", label: "농약 잔류 기간 분석 중...", doneLabel: "농약 잔류 기간 분석 완료" },
+  { id: "ss1", icon: "🧪", label: "미생물제 상호작용 검토 중...", doneLabel: "상호작용 검토 완료" },
+  { id: "ss2", icon: "🛡️", label: "안전 살포일 산출 중...", doneLabel: "안전 살포일 산출 완료" },
+];
+
 export const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ── 카카오 지오코딩 ───────────────────────────────────────── */

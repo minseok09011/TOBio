@@ -108,6 +108,12 @@ function encodeServiceKey(key) {
 const _forecastCache = new Map();
 const CACHE_TTL_MS = 3 * 3600 * 1000;
 
+// 좌표 단위 stale cache — 정상 응답을 격자별로 별도 보관해서, KMA가 일시 장애일 때
+// 만료된 예보라도 반환 (no data보다 stale data가 UX상 훨씬 나음).
+// TTL: 24h (그 이상 지난 예보는 의미 없음).
+const _staleCache = new Map();
+const STALE_TTL_MS = 24 * 3600 * 1000;
+
 function _aggregateDaily(items) {
   // fcstDate별로 카테고리를 모은다.
   const byDate = new Map();
@@ -158,6 +164,8 @@ function _aggregateDaily(items) {
 }
 
 // 4) 예보 호출 → fcstDate별 일 단위 집계 배열 (오늘~글피)
+//    실패 시: 429/5xx는 짧은 backoff로 1~2회 재시도. 그래도 실패하면 좌표별 stale cache가
+//    있으면 만료된 예보라도 반환(부분 정확도 < 완전 실패). 둘 다 안 되면 에러.
 async function fetchVilageForecast(lat, lon, now = new Date()) {
   const KMA_API_KEY = process.env.KMA_API_KEY;
   if (!KMA_API_KEY) throw new Error("KMA_API_KEY가 설정되지 않았습니다(.env).");
@@ -169,27 +177,55 @@ async function fetchVilageForecast(lat, lon, now = new Date()) {
   const cached = _forecastCache.get(cacheKey);
   if (cached && cached.expires > Date.now()) return cached.data;
 
+  const staleKey = `${nx},${ny}`;
   const url =
     `${KMA_BASE_URL}?serviceKey=${encodeServiceKey(KMA_API_KEY)}` +
     `&pageNo=1&numOfRows=1000&dataType=JSON` +
     `&base_date=${base_date}&base_time=${base_time}&nx=${nx}&ny=${ny}`;
 
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  if (!res.ok) throw new Error(`기상청 API HTTP ${res.status}`);
-  const json = await res.json();
+  let lastErr = null;
+  // 1회 호출 + 최대 2회 재시도 (총 3회 시도) — 429/5xx는 KMA 측 일시 hiccup이 흔함
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) {
+        const retryable = res.status === 429 || res.status >= 500;
+        if (retryable && attempt < 2) {
+          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+          continue;
+        }
+        throw new Error(`기상청 API HTTP ${res.status}`);
+      }
+      const json = await res.json();
+      const resultCode = json?.response?.header?.resultCode;
+      if (resultCode !== "00") {
+        const msg = json?.response?.header?.resultMsg || "알 수 없음";
+        throw new Error(`기상청 API 오류 (resultCode=${resultCode}, ${msg})`);
+      }
+      const items = json?.response?.body?.items?.item;
+      if (!Array.isArray(items) || items.length === 0) throw new Error("예보 데이터가 비어 있습니다.");
 
-  const resultCode = json?.response?.header?.resultCode;
-  if (resultCode !== "00") {
-    const msg = json?.response?.header?.resultMsg || "알 수 없음";
-    throw new Error(`기상청 API 오류 (resultCode=${resultCode}, ${msg})`);
+      const days = _aggregateDaily(items);
+      _forecastCache.set(cacheKey, { data: days, expires: Date.now() + CACHE_TTL_MS });
+      _staleCache.set(staleKey, { data: days, savedAt: Date.now() });
+      return days;
+    } catch (err) {
+      lastErr = err;
+      // AbortError나 네트워크 오류도 재시도
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+        continue;
+      }
+    }
   }
 
-  const items = json?.response?.body?.items?.item;
-  if (!Array.isArray(items) || items.length === 0) throw new Error("예보 데이터가 비어 있습니다.");
-
-  const days = _aggregateDaily(items);
-  _forecastCache.set(cacheKey, { data: days, expires: Date.now() + CACHE_TTL_MS });
-  return days;
+  // 모든 시도 실패 — 같은 격자의 stale cache가 24h 안에 있으면 그거라도 반환
+  const stale = _staleCache.get(staleKey);
+  if (stale && Date.now() - stale.savedAt < STALE_TTL_MS) {
+    console.warn(`⚠️ KMA 일시 실패 → stale cache 반환 (nx=${nx},ny=${ny}, 저장 ${Math.round((Date.now() - stale.savedAt) / 60000)}분 전)`);
+    return stale.data;
+  }
+  throw lastErr || new Error("기상청 API 호출 실패");
 }
 
 module.exports = { latLonToGrid, latestBaseDateTime, parsePcpMm, fetchVilageForecast };
